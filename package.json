@@ -1,0 +1,24 @@
+{
+  "name": "suite-educativa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Suite educativa unificada: intranet, horarios, asistencia docente, reportes e importaciones.",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "api:dev": "pnpm --filter api run start:dev",
+    "web:dev": "pnpm --filter web run dev",
+    "db:generate": "pnpm --filter @suite/database run generate",
+    "db:migrate": "pnpm --filter @suite/database run migrate",
+    "db:deploy": "pnpm --filter @suite/database run deploy",
+    "db:seed": "pnpm --filter @suite/database run seed",
+    "db:studio": "pnpm --filter @suite/database run studio",
+    "setup": "pnpm install && pnpm db:generate",
+    "check": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
