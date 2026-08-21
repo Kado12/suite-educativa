@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
-import { Card, Button } from '@suite/ui';
-import { ArrowPathIcon, DocumentDuplicateIcon, UsersIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { Card, Button, Modal } from '@suite/ui';
+import {
+  ArrowPathIcon, DocumentDuplicateIcon, UsersIcon, InformationCircleIcon,
+  EyeIcon, ArrowDownTrayIcon, ClockIcon,
+} from '@heroicons/react/24/outline';
 import { useToast } from '../../context/ToastContext';
 import { toolsService } from '../../api/tools.service';
+import { auditService } from '../../api/audit.service';
 
-const FileInput: React.FC<{ label: string; onFile: (f: File | null) => void }> = ({ label, onFile }) => (
+const FileInput: React.FC<{ label: string; file: File | null; onFile: (f: File | null) => void; onPreview: () => void }> = ({ label, file, onFile, onPreview }) => (
   <div>
     <label className="input-label">{label}</label>
-    <input type="file" accept=".xlsx,.xls" onChange={(e) => onFile(e.target.files?.[0] || null)} className="input" />
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input type="file" accept=".xlsx,.xls" onChange={(e) => onFile(e.target.files?.[0] || null)} className="input" style={{ flex: 1 }} />
+      {file && (
+        <Button variant="secondary" size="sm" onClick={onPreview} title="Vista previa">
+          <EyeIcon style={{ width: 14, height: 14 }} />
+        </Button>
+      )}
+    </div>
+    {file && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 4 }}>📄 {file.name}</div>}
   </div>
 );
 
@@ -18,19 +30,23 @@ const ResultTable: React.FC<{ headers: string[]; rows: any[]; max?: number }> = 
         <thead><tr>{headers.map((h) => <th key={h}>{h}</th>)}</tr></thead>
         <tbody>
           {rows.slice(0, max).map((r, i) => (
-            <tr key={i}>{headers.map((h) => <td key={h}>{String(r[h] ?? '')}</td>)}</tr>
+            <tr key={i}>{headers.map((h, j) => <td key={j}>{Array.isArray(r) ? r[j] : String(r[h] ?? '')}</td>)}</tr>
           ))}
         </tbody>
       </table>
     </div>
-    {rows.length > max && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', padding: '8px 12px' }}>Mostrando {max} de {rows.length}. Descarga el Excel para ver todo.</p>}
+    {rows.length > max && <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', padding: '8px 12px' }}>Mostrando {max} de {rows.length}.</p>}
   </Card>
 );
 
 export const ToolsPage: React.FC = () => {
   const { success, error } = useToast();
-  const [tab, setTab] = useState<'compare' | 'schedule' | 'cross'>('compare');
+  const [tab, setTab] = useState<'compare' | 'schedule' | 'cross' | 'history'>('compare');
   const [busy, setBusy] = useState(false);
+
+  // Preview modal
+  const [previewData, setPreviewData] = useState<{ headers: string[]; rows: any[][] } | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('');
 
   // Compare
   const [cA, setCA] = useState<File | null>(null);
@@ -46,6 +62,25 @@ export const ToolsPage: React.FC = () => {
   const [xS, setXS] = useState<File | null>(null);
   const [xRes, setXRes] = useState<any>(null);
 
+  // History
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (tab === 'history') {
+      auditService.list({ entity: 'Tool', pageSize: 100 }).then((r) => setHistory(r.logs));
+    }
+  }, [tab]);
+
+  const handlePreview = async (file: File, title: string) => {
+    try {
+      const data = await toolsService.preview(file);
+      setPreviewData(data);
+      setPreviewTitle(`Vista previa: ${title}`);
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error al leer archivo');
+    }
+  };
+
   const run = async (fn: () => Promise<any>, setter: (r: any) => void) => {
     setBusy(true);
     try {
@@ -60,30 +95,19 @@ export const ToolsPage: React.FC = () => {
   };
 
   const tools = [
-    {
-      id: 'compare',
-      label: 'Comparar por DNI',
-      icon: DocumentDuplicateIcon,
-      description: 'Compara dos listas de personas (alumnos, docentes, etc.) y muestra quiénes están en ambas, solo en una, o solo en la otra.',
-      useCase: 'Útil para cruzar registros de inscripción contra listas de asistencia, nómina, o cualquier base de datos externa.',
-    },
-    {
-      id: 'schedule',
-      label: 'Transformar horario',
-      icon: ArrowPathIcon,
-      description: 'Convierte un horario en formato de tabla (salones × días) a una lista ordenada de asignaciones (salón, docente, curso, día).',
-      useCase: 'Ideal cuando recibes horarios desde otras áreas en formato visual y necesitas estructurarlos para el sistema.',
-    },
-    {
-      id: 'cross',
-      label: 'Cruzar con docentes',
-      icon: UsersIcon,
-      description: 'Toma un horario transformado y le agrega el DNI de cada docente usando coincidencia exacta o búsqueda fuzzy.',
-      useCase: 'Para vincular horarios externos con la base de datos de docentes de la institución.',
-    },
+    { id: 'compare', label: 'Comparar por DNI', icon: DocumentDuplicateIcon, templateType: 'compare', description: 'Compara dos listas de personas y muestra quiénes están en ambas, solo en una, o solo en la otra.', useCase: 'Útil para cruzar registros de inscripción contra listas de asistencia o bases externas.' },
+    { id: 'schedule', label: 'Transformar horario', icon: ArrowPathIcon, templateType: 'schedule', description: 'Convierte un horario en formato de tabla (salones × días) a una lista ordenada de asignaciones.', useCase: 'Ideal cuando recibes horarios en formato visual y necesitas estructurarlos.' },
+    { id: 'cross', label: 'Cruzar con docentes', icon: UsersIcon, templateType: 'cross-info', description: 'Toma un horario y le agrega el DNI de cada docente usando coincidencia exacta o fuzzy.', useCase: 'Para vincular horarios externos con la base de datos de docentes.' },
+    { id: 'history', label: 'Historial', icon: ClockIcon, templateType: null, description: 'Registro de operaciones realizadas.', useCase: '' },
   ];
 
   const activeTool = tools.find((t) => t.id === tab)!;
+
+  const ACTION_LABELS: Record<string, string> = {
+    COMPARE: 'Comparar por DNI',
+    TRANSFORM: 'Transformar horario',
+    CROSS: 'Cruzar con docentes',
+  };
 
   return (
     <div>
@@ -94,65 +118,61 @@ export const ToolsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Descripción general */}
       <Card style={{ marginBottom: 24, background: 'var(--color-info-50)', border: '1px solid var(--color-info-200)' }}>
         <div style={{ display: 'flex', gap: 12 }}>
           <InformationCircleIcon style={{ width: 24, height: 24, color: 'var(--color-info-600)', flexShrink: 0 }} />
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-info-900)', lineHeight: 1.6 }}>
-            Estas herramientas te permiten procesar archivos Excel para tareas comunes como comparar listas, transformar horarios y cruzar datos con docentes.
-            Cada herramienta tiene un propósito específico y puede descargarse el resultado en formato Excel para su uso en otros sistemas.
+            Estas herramientas procesan archivos Excel para tareas comunes. Puedes descargar plantillas de ejemplo para ver el formato esperado y usar la vista previa para verificar tus archivos antes de procesarlos.
           </div>
         </div>
       </Card>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--color-neutral-100)', padding: 4, borderRadius: 12, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--color-neutral-100)', padding: 4, borderRadius: 12, width: 'fit-content', flexWrap: 'wrap' }}>
         {tools.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id as any)}
+          <button key={t.id} onClick={() => setTab(t.id as any)}
             style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8,
               fontSize: 'var(--text-sm)', fontWeight: 600, transition: 'all 0.15s',
               background: tab === t.id ? 'var(--color-neutral-0)' : 'transparent',
               color: tab === t.id ? 'var(--color-primary-600)' : 'var(--color-neutral-600)',
               boxShadow: tab === t.id ? 'var(--shadow-sm)' : 'none',
-            }}
-          >
+            }}>
             <t.icon style={{ width: 18, height: 18 }} />
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Descripción de la herramienta activa */}
-      <Card style={{ marginBottom: 16, background: 'var(--color-neutral-50)' }}>
-        <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 8, color: 'var(--color-neutral-900)' }}>
-          {activeTool.label}
-        </h3>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-neutral-700)', marginBottom: 12, lineHeight: 1.6 }}>
-          {activeTool.description}
-        </p>
-        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', fontStyle: 'italic' }}>
-          <strong>Caso de uso:</strong> {activeTool.useCase}
-        </div>
-      </Card>
+      {tab !== 'history' && (
+        <>
+          <Card style={{ marginBottom: 16, background: 'var(--color-neutral-50)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 8 }}>{activeTool.label}</h3>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-neutral-700)', marginBottom: 8, lineHeight: 1.6 }}>{activeTool.description}</p>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', fontStyle: 'italic' }}>
+                  <strong>Caso de uso:</strong> {activeTool.useCase}
+                </div>
+              </div>
+              {activeTool.templateType && (
+                <Button variant="secondary" size="sm" onClick={() => toolsService.downloadTemplate(activeTool.templateType!)}>
+                  <ArrowDownTrayIcon style={{ width: 14, height: 14 }} /> Plantilla de ejemplo
+                </Button>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
 
-      {/* Comparar por DNI */}
+      {/* COMPARE */}
       {tab === 'compare' && (
         <Card>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
-            <FileInput label="Archivo A (lista completa)" onFile={setCA} />
-            <FileInput label="Archivo B (lista parcial)" onFile={setCB} />
+            <FileInput label="Archivo A" file={cA} onFile={setCA} onPreview={() => cA && handlePreview(cA, 'Archivo A')} />
+            <FileInput label="Archivo B" file={cB} onFile={setCB} onPreview={() => cB && handlePreview(cB, 'Archivo B')} />
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button onClick={() => run(() => toolsService.compare(cA!, cB!), setCRes)} isLoading={busy} disabled={!cA || !cB}>
-                Comparar
-              </Button>
-              {cRes && (
-                <Button variant="success" onClick={() => toolsService.compareExport(cA!, cB!)}>
-                  📥 Descargar
-                </Button>
-              )}
+              <Button onClick={() => run(() => toolsService.compare(cA!, cB!), setCRes)} isLoading={busy} disabled={!cA || !cB}>Comparar</Button>
+              {cRes && <Button variant="success" onClick={() => toolsService.compareExport(cA!, cB!)}>📥</Button>}
             </div>
           </div>
           {cRes && (
@@ -166,20 +186,14 @@ export const ToolsPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Transformar horario */}
+      {/* SCHEDULE */}
       {tab === 'schedule' && (
         <Card>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
-            <FileInput label="Archivo de horario (formato visual)" onFile={setSF} />
+            <FileInput label="Archivo de horario" file={sF} onFile={setSF} onPreview={() => sF && handlePreview(sF, 'Horario')} />
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button onClick={() => run(() => toolsService.transform(sF!), setSRes)} isLoading={busy} disabled={!sF}>
-                Transformar
-              </Button>
-              {sRes && (
-                <Button variant="success" onClick={() => toolsService.transformExport(sF!)}>
-                  📥 Descargar
-                </Button>
-              )}
+              <Button onClick={() => run(() => toolsService.transform(sF!), setSRes)} isLoading={busy} disabled={!sF}>Transformar</Button>
+              {sRes && <Button variant="success" onClick={() => toolsService.transformExport(sF!)}>📥</Button>}
             </div>
           </div>
           {sRes && (
@@ -191,33 +205,67 @@ export const ToolsPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Cruzar con docentes */}
+      {/* CROSS */}
       {tab === 'cross' && (
         <Card>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
-            <FileInput label="Docentes (NOMBRES, APELLIDOS, DNI)" onFile={setXI} />
-            <FileInput label="Horario transformado (DOCENTE)" onFile={setXS} />
+            <FileInput label="Docentes" file={xI} onFile={setXI} onPreview={() => xI && handlePreview(xI, 'Docentes')} />
+            <FileInput label="Horario transformado" file={xS} onFile={setXS} onPreview={() => xS && handlePreview(xS, 'Horario')} />
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button onClick={() => run(() => toolsService.cross(xI!, xS!), setXRes)} isLoading={busy} disabled={!xI || !xS}>
-                Cruzar
-              </Button>
-              {xRes && (
-                <Button variant="success" onClick={() => toolsService.crossExport(xI!, xS!)}>
-                  📥 Descargar
-                </Button>
-              )}
+              <Button onClick={() => run(() => toolsService.cross(xI!, xS!), setXRes)} isLoading={busy} disabled={!xI || !xS}>Cruzar</Button>
+              {xRes && <Button variant="success" onClick={() => toolsService.crossExport(xI!, xS!)}>📥</Button>}
             </div>
           </div>
           {xRes && (
             <>
               <div style={{ marginTop: 16, padding: 12, background: 'var(--color-neutral-50)', borderRadius: 8, fontSize: 'var(--text-sm)' }}>
-                <strong>Resumen:</strong> {xRes.summary.exact} coincidencias exactas · {xRes.summary.fuzzy} coincidencias fuzzy · {xRes.summary.notFound} no encontrados
+                <strong>Resumen:</strong> {xRes.summary.exact} exactos · {xRes.summary.fuzzy} fuzzy · {xRes.summary.notFound} no encontrados
               </div>
               <ResultTable headers={xRes.rows.length ? Object.keys(xRes.rows[0]) : []} rows={xRes.rows} />
             </>
           )}
         </Card>
       )}
+
+      {/* HISTORY */}
+      {tab === 'history' && (
+        <Card className="p-0">
+          <div className="table-container" style={{ border: 'none' }}>
+            <table className="table">
+              <thead>
+                <tr><th>Fecha/Hora</th><th>Usuario</th><th>Herramienta</th><th>Detalles</th><th>IP</th></tr>
+              </thead>
+              <tbody>
+                {history.map((log) => (
+                  <tr key={log.id}>
+                    <td style={{ fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>{new Date(log.createdAt).toLocaleString()}</td>
+                    <td>{log.userName || '—'}</td>
+                    <td><span className="badge badge-primary">{ACTION_LABELS[log.action] || log.action}</span></td>
+                    <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)' }}>
+                      {log.details?.file || log.details?.fileA || '—'}
+                      {log.details?.summary && ` · ${JSON.stringify(log.details.summary)}`}
+                    </td>
+                    <td style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)' }}>{log.ipAddress || '—'}</td>
+                  </tr>
+                ))}
+                {history.length === 0 && (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--color-neutral-400)' }}>Sin operaciones registradas</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Preview Modal */}
+      <Modal isOpen={!!previewData} onClose={() => setPreviewData(null)} title={previewTitle} size="lg">
+        {previewData && (
+          <ResultTable headers={previewData.headers} rows={previewData.rows} max={5} />
+        )}
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 12 }}>
+          Mostrando las primeras 5 filas del archivo.
+        </p>
+      </Modal>
     </div>
   );
 };

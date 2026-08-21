@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCircleIcon, KeyIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, KeyIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Input } from '@suite/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authService } from '../api/auth.service';
 
 export const ProfilePage: React.FC = () => {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, refreshProfile } = useAuth();
   const { success, error } = useToast();
   const nav = useNavigate();
 
@@ -39,7 +39,7 @@ export const ProfilePage: React.FC = () => {
       });
       success('Perfil actualizado');
       // Actualizar datos locales
-      await login(user!.email, ''); // Esto recargará el perfil
+      await refreshProfile(); // Esto recargará el perfil
     } catch (err: any) {
       error(err.response?.data?.message || 'Error al actualizar perfil');
     } finally {

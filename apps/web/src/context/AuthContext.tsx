@@ -8,6 +8,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   can: (permission: Permission) => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -30,6 +31,16 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
       setIsLoading(false);
     })();
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const profile = await authService.getProfile();
+        setUser(profile);
+      } catch {}
+    }
+  }, []);
   
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken, user: u } = await authService.login(email, password);
@@ -48,7 +59,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
   );
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, can }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, can, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

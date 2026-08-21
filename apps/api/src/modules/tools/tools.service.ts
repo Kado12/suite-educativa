@@ -211,4 +211,72 @@ export class ToolsService {
     r.notFound.forEach((row: any) => nf.addRow([row.DOCENTE, row.DNI || '']));
     return Buffer.from(await wb.xlsx.writeBuffer());
   }
+
+    // ===== PREVIEW: primeras filas de un archivo =====
+  async preview(buffer: Buffer | ArrayBuffer, maxRows = 5): Promise<{ headers: string[]; rows: any[][] }> {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer as ArrayBuffer);
+    const ws = wb.worksheets[0];
+    if (!ws) throw new BadRequestException('El archivo no tiene hojas');
+
+    const headers: string[] = [];
+    const rows: any[][] = [];
+    let count = 0;
+
+    ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      const values = (row.values as any[]).slice(1).map((v) => (v === null || v === undefined ? '' : String(v)));
+      if (rowNumber === 1) {
+        headers.push(...values);
+      } else if (count < maxRows && values.some((v) => v !== '')) {
+        rows.push(values);
+        count++;
+      }
+    });
+
+    return { headers, rows };
+  }
+
+  // ===== PLANTILLAS DE EJEMPLO =====
+  async generateToolTemplate(type: string): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Ejemplo');
+
+    if (type === 'compare') {
+      ws.addRow(['DNI', 'NOMBRES', 'APELLIDOS']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRows([
+        ['12345678', 'Juan', 'Pérez'],
+        ['87654321', 'María', 'Gómez'],
+        ['11223344', 'Luis', 'Díaz'],
+      ]);
+    } else if (type === 'schedule') {
+      ws.addRow(['AULA', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRow(['A11', 'Álgebra', 'Física', 'Lenguaje', 'Álgebra', 'Química']);
+      ws.addRow(['', 'Juan Pérez', 'María Gómez', 'Luis Díaz', 'Juan Pérez', 'Ana Torres']);
+      ws.addRow(['A12', 'Geometría', 'Historia', '', 'Biología', 'Inglés']);
+      ws.addRow(['', 'Pedro Ruiz', 'Lucía Vega', '', 'Rosa Mendoza', 'Jorge Castro']);
+    } else if (type === 'cross-info') {
+      ws.addRow(['NOMBRES', 'APELLIDOS', 'DNI']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRows([
+        ['Juan', 'Pérez García', '12345678'],
+        ['María', 'Gómez López', '87654321'],
+        ['Luis', 'Díaz Torres', '11223344'],
+      ]);
+    } else if (type === 'cross-schedule') {
+      ws.addRow(['AULA', 'DOCENTE', 'CURSO', 'DIA_SEMANA']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRows([
+        ['A11', 'Juan Pérez', 'Álgebra', 'LUNES'],
+        ['A11', 'María Gómez', 'Física', 'MARTES'],
+        ['A12', 'Luis Díaz', 'Geometría', 'LUNES'],
+      ]);
+    } else {
+      throw new BadRequestException('Tipo de plantilla no válido');
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
 }
