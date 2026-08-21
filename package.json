@@ -16,6 +16,7 @@
     "db:migrate": "pnpm --filter @suite/database run migrate",
     "db:deploy": "pnpm --filter @suite/database run deploy",
     "db:seed": "pnpm --filter @suite/database run seed",
+    "db:seed:full": "pnpm --filter @suite/database run seed:full",
     "db:studio": "pnpm --filter @suite/database run studio",
     "setup": "pnpm install && pnpm db:generate",
     "check": "turbo run build"

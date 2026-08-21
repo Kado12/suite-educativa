@@ -9,6 +9,7 @@
     "migrate": "prisma migrate dev",
     "deploy": "prisma migrate deploy",
     "seed": "node seed.js",
+    "seed:full": "node seed-full.js",
     "studio": "prisma studio"
   },
   "dependencies": {
