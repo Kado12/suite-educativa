@@ -10,6 +10,8 @@ import { EnrollmentModule } from './modules/enrollment/enrollment.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SchedulingModule } from './modules/scheduling/scheduling.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ImportsModule } from './modules/imports/imports.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
     PaymentsModule,
     SchedulingModule,
     AttendanceModule,
+    ReportsModule,
+    ImportsModule,
   ],
 })
 export class AppModule {}
