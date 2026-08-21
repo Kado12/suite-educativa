@@ -5,6 +5,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
+  private getTodayDate(): Date {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  }
+
   async getOverview() {
     const [
       totalStudents,
@@ -25,7 +30,7 @@ export class DashboardService {
       this.prisma.enrollment.count({ where: { status: 'ACTIVE' } }),
       this.prisma.scheduleSession.count({ where: { dayOfWeek: new Date().getUTCDay() || 7 } }),
       this.prisma.attendanceRecord.count({
-        where: { date: new Date().toISOString().split('T')[0] as any },
+        where: { date: this.getTodayDate() },
       }),
       this.prisma.payment.count({ where: { status: 'PENDING' } }),
       this.prisma.payment.count({ where: { status: 'OVERDUE' } }),

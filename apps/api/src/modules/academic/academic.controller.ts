@@ -16,6 +16,8 @@ export class AcademicController {
   createSede(@Body('name') name: string) { return this.svc.createSede(name); }
   @Get('sedes') @RequirePermissions('academic.view')
   listSedes() { return this.svc.listSedes(); }
+  @Patch('sedes/:id') @RequirePermissions('academic.manage')
+  updateSede(@Param('id') id: string, @Body('name') name: string) { return this.svc.updateSede(id, name); }
   @Delete('sedes/:id') @RequirePermissions('academic.manage')
   deleteSede(@Param('id') id: string) { return this.svc.deleteSede(id); }
 
@@ -23,11 +25,15 @@ export class AcademicController {
   createTurno(@Body() b: any) { return this.svc.createTurno(b); }
   @Get('turnos') @RequirePermissions('academic.view')
   listTurnos() { return this.svc.listTurnos(); }
+  @Patch('turnos/:id') @RequirePermissions('academic.manage')
+  updateTurno(@Param('id') id: string, @Body() b: any) { return this.svc.updateTurno(id, b); }
   @Delete('turnos/:id') @RequirePermissions('academic.manage')
   deleteTurno(@Param('id') id: string) { return this.svc.deleteTurno(id); }
 
   @Post('classrooms') @RequirePermissions('academic.manage')
   createClassroom(@Body() b: { name: string; sedeId: string }) { return this.svc.createClassroom(b.name, b.sedeId); }
+  @Patch('classrooms/:id') @RequirePermissions('academic.manage')
+  updateClassroom(@Param('id') id: string, @Body() b: any) { return this.svc.updateClassroom(id, b); }
   @Delete('classrooms/:id') @RequirePermissions('academic.manage')
   deleteClassroom(@Param('id') id: string) { return this.svc.deleteClassroom(id); }
 
@@ -35,6 +41,8 @@ export class AcademicController {
   createSection(@Body() b: any) { return this.svc.createSection(b); }
   @Get('sections') @RequirePermissions('academic.view')
   listSections() { return this.svc.listSections(); }
+  @Patch('sections/:id/full') @RequirePermissions('academic.manage')
+  updateSectionFull(@Param('id') id: string, @Body() b: any) { return this.svc.updateSectionFull(id, b); }
   @Patch('sections/:id') @RequirePermissions('academic.manage')
   updateSection(@Param('id') id: string, @Body() b: any) { return this.svc.updateSection(id, b); }
   @Delete('sections/:id') @RequirePermissions('academic.manage')
@@ -44,11 +52,15 @@ export class AcademicController {
   createArea(@Body('name') name: string) { return this.svc.createArea(name); }
   @Get('areas') @RequirePermissions('academic.view')
   listAreas() { return this.svc.listAreas(); }
+  @Patch('areas/:id') @RequirePermissions('academic.manage')
+  updateArea(@Param('id') id: string, @Body('name') name: string) { return this.svc.updateArea(id, name); }
   @Delete('areas/:id') @RequirePermissions('academic.manage')
   deleteArea(@Param('id') id: string) { return this.svc.deleteArea(id); }
 
   @Post('courses') @RequirePermissions('academic.manage')
   createCourse(@Body() b: { name: string; areaId: string }) { return this.svc.createCourse(b.name, b.areaId); }
+  @Patch('courses/:id') @RequirePermissions('academic.manage')
+  updateCourse(@Param('id') id: string, @Body() b: any) { return this.svc.updateCourse(id, b); }
   @Delete('courses/:id') @RequirePermissions('academic.manage')
   deleteCourse(@Param('id') id: string) { return this.svc.deleteCourse(id); }
 
@@ -56,6 +68,8 @@ export class AcademicController {
   createPeriod(@Body() b: any) { return this.svc.createPeriod(b); }
   @Get('periods') @RequirePermissions('academic.view')
   listPeriods() { return this.svc.listPeriods(); }
+  @Patch('periods/:id/full') @RequirePermissions('academic.manage')
+  updatePeriodFull(@Param('id') id: string, @Body() b: any) { return this.svc.updatePeriod(id, b); }
   @Patch('periods/:id') @RequirePermissions('academic.manage')
   togglePeriod(@Param('id') id: string, @Body('isActive') isActive: boolean) { return this.svc.togglePeriod(id, isActive); }
   @Delete('periods/:id') @RequirePermissions('academic.manage')
@@ -67,6 +81,8 @@ export class AcademicController {
   listBlocks(@Query('periodId') periodId?: string) {
     return this.svc.listBlocks(periodId);
   }
+  @Patch('blocks/:id') @RequirePermissions('academic.manage')
+  updateBlock(@Param('id') id: string, @Body() b: any) { return this.svc.updateBlock(id, b); }
   @Delete('blocks/:id') @RequirePermissions('academic.manage')
   deleteBlock(@Param('id') id: string) { return this.svc.deleteBlock(id); }
   @Post('blocks/:id/courses') @RequirePermissions('academic.manage')

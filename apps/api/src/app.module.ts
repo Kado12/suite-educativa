@@ -13,6 +13,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ToolsModule } from './modules/tools/tools.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     ReportsModule,
     ImportsModule,
     DashboardModule,
+    ToolsModule,
   ],
 })
 export class AppModule {}
