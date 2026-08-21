@@ -5,6 +5,9 @@ import { ToastProvider } from './context/ToastContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { AcademicPage } from './pages/academic/AcademicPage';
+import { PeoplePage } from './pages/people/PeoplePage';
+import { UsersPage } from './pages/users/UsersPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -47,6 +50,9 @@ const App: React.FC = () => (
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/academic" element={<AcademicPage />} />
+            <Route path="/people" element={<PeoplePage />} />
+            <Route path="/users" element={<UsersPage />} />
             {/* Las demás rutas irán en fases siguientes */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

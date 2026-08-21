@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== ENUMS ====================
+
 enum Role {
   ADMIN
   INFORMATICO
@@ -14,19 +16,385 @@ enum Role {
   SECRETARIA
 }
 
+enum EnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  WITHDRAWN
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum ValidationStatus {
+  PENDING
+  VALIDATED
+  OBSERVED
+}
+
+// ==================== PERSONAS Y USUARIOS ====================
+
+model Person {
+  id        String    @id @default(cuid())
+  firstName String
+  lastName  String
+  dni       String?   @unique
+  phone     String?
+  email     String?
+  birthDate DateTime? @db.Date
+  gender    String?
+  address   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user           User?
+  teacherProfile TeacherProfile?
+  enrollments    Enrollment[]
+
+  @@map("persons")
+}
+
 model User {
   id           String   @id @default(cuid())
+  personId     String?  @unique
   email        String   @unique
   passwordHash String
-
   firstName    String
   lastName     String
   role         Role
-
   isActive     Boolean  @default(true)
-
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  person      Person?          @relation(fields: [personId], references: [id], onDelete: SetNull)
+  validations WeekValidation[]
+
   @@map("users")
+}
+
+// ==================== ESTRUCTURA ACADÉMICA ====================
+
+model Sede {
+  id   String @id @default(cuid())
+  name String @unique
+
+  classrooms   Classroom[]
+  teacherSedes TeacherSede[]
+  sedeDays     TeacherSedeDay[]
+
+  @@map("sedes")
+}
+
+model Turno {
+  id         String @id @default(cuid())
+  name       String @unique
+  slot1Start String
+  slot1End   String
+  slot2Start String
+  slot2End   String
+
+  sections      Section[]
+  teacherTurnos TeacherTurno[]
+  slotPrefs     TeacherSlotPref[]
+
+  @@map("turnos")
+}
+
+model Classroom {
+  id     String @id @default(cuid())
+  name   String
+  sedeId String
+
+  sede     Sede      @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  sections Section[]
+
+  @@unique([name, sedeId])
+  @@map("classrooms")
+}
+
+model Section {
+  id                  String @id @default(cuid())
+  name                String
+  classroomId         String
+  turnoId             String
+  capacity            Int    @default(30)
+  enrollmentPriority  Int    @default(0)
+
+  classroom   Classroom         @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  turno       Turno             @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  sessions    ScheduleSession[]
+
+  @@unique([classroomId, turnoId])
+  @@map("sections")
+}
+
+model Period {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  startDate DateTime
+  weeks     Int     @default(12)
+  isActive  Boolean @default(true)
+
+  blocks      Block[]
+  enrollments Enrollment[]
+  validations WeekValidation[]
+
+  @@map("periods")
+}
+
+model Block {
+  id        String @id @default(cuid())
+  periodId  String
+  name      String
+  startWeek Int
+  endWeek   Int
+
+  period       Period            @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  blockCourses BlockCourse[]
+  sessions     ScheduleSession[]
+
+  @@unique([periodId, name])
+  @@map("blocks")
+}
+
+model Area {
+  id   String @id @default(cuid())
+  name String @unique
+
+  courses Course[]
+
+  @@map("areas")
+}
+
+model Course {
+  id     String @id @default(cuid())
+  name   String
+  areaId String
+
+  area           Area            @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  blockCourses   BlockCourse[]
+  teacherCourses TeacherCourse[]
+  sessions       ScheduleSession[]
+
+  @@map("courses")
+}
+
+model BlockCourse {
+  id       String @id @default(cuid())
+  blockId  String
+  courseId String
+
+  block  Block  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([blockId, courseId])
+  @@map("block_courses")
+}
+
+// ==================== PERFIL DOCENTE ====================
+
+model TeacherProfile {
+  id                 String  @id @default(cuid())
+  personId           String  @unique
+  priority           Int     @default(5)
+  yearsExperience    Int?
+  notes              String? @db.Text
+  maxSessionsPerWeek Int?
+  maxSections        Int?
+
+  person          Person                  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  courses         TeacherCourse[]
+  turnos          TeacherTurno[]
+  sedes           TeacherSede[]
+  sedeDays        TeacherSedeDay[]
+  slotPrefs       TeacherSlotPref[]
+  unavailableDays TeacherUnavailableDay[]
+  sessions        ScheduleSession[]
+  validations     WeekValidation[]
+
+  @@map("teacher_profiles")
+}
+
+model TeacherCourse {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  courseId         String
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, courseId])
+  @@map("teacher_courses")
+}
+
+model TeacherTurno {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  turnoId          String
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  turno          Turno          @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, turnoId])
+  @@map("teacher_turnos")
+}
+
+model TeacherSede {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  sedeId           String
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  sede           Sede           @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, sedeId])
+  @@map("teacher_sedes")
+}
+
+model TeacherSedeDay {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  sedeId           String
+  dayOfWeek        Int
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  sede           Sede           @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, sedeId, dayOfWeek])
+  @@map("teacher_sede_days")
+}
+
+model TeacherSlotPref {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  turnoId          String
+  slot             Int
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  turno          Turno          @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, turnoId, slot])
+  @@map("teacher_slot_prefs")
+}
+
+model TeacherUnavailableDay {
+  id               String @id @default(cuid())
+  teacherProfileId String
+  dayOfWeek        Int
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, dayOfWeek])
+  @@map("teacher_unavailable_days")
+}
+
+// ==================== MATRÍCULAS Y PAGOS ====================
+
+model Enrollment {
+  id         String           @id @default(cuid())
+  studentId  String
+  sectionId  String
+  periodId   String
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now())
+
+  student  Person    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section  Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  period   Period    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("enrollments")
+}
+
+model PaymentPlan {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  installments Int     @default(1)
+  isActive     Boolean @default(true)
+
+  payments Payment[]
+
+  @@map("payment_plans")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  enrollmentId  String
+  paymentPlanId String?
+  installment   Int           @default(1)
+  amount        Decimal       @db.Decimal(10, 2)
+  dueDate       DateTime      @db.Date
+  paidDate      DateTime?     @db.Date
+  paidAmount    Decimal?      @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+
+  enrollment  Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  paymentPlan PaymentPlan? @relation(fields: [paymentPlanId], references: [id], onDelete: SetNull)
+
+  @@map("payments")
+}
+
+// ==================== HORARIOS ====================
+
+model ScheduleSession {
+  id               String @id @default(cuid())
+  sectionId        String
+  courseId         String
+  teacherProfileId String
+  blockId          String
+  dayOfWeek        Int
+  slot             Int
+
+  section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherProfile TeacherProfile     @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  block          Block              @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  attendances    AttendanceRecord[]
+
+  @@unique([sectionId, dayOfWeek, slot])
+  @@unique([teacherProfileId, dayOfWeek, slot])
+  @@unique([sectionId, courseId, blockId])
+  @@map("schedule_sessions")
+}
+
+// ==================== ASISTENCIA ====================
+
+model AttendanceRecord {
+  id          String           @id @default(cuid())
+  sessionId   String
+  date        DateTime         @db.Date
+  status      AttendanceStatus
+  lateMinutes Int              @default(0)
+  notes       String?
+
+  session ScheduleSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, date])
+  @@map("attendance_records")
+}
+
+model WeekValidation {
+  id               String           @id @default(cuid())
+  teacherProfileId String
+  periodId         String
+  weekNumber       Int
+  status           ValidationStatus @default(PENDING)
+  comment          String?
+  validatedById    String?
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  period         Period         @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  validatedBy    User?          @relation(fields: [validatedById], references: [id], onDelete: SetNull)
+
+  @@unique([teacherProfileId, periodId, weekNumber])
+  @@map("week_validations")
 }

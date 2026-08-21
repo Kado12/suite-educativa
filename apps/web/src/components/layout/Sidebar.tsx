@@ -9,6 +9,7 @@ import {
   DocumentChartBarIcon,
   WrenchScrewdriverIcon,
   ArrowRightOnRectangleIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { APP_NAME } from '@suite/shared';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +34,7 @@ const MENU: MenuItem[] = [
   { path: '/attendance', label: 'Asistencia', icon: UserGroupIcon, section: 'Operación' },
   { path: '/reports', label: 'Reportes', icon: DocumentChartBarIcon, section: 'Operación' },
   { path: '/tools', label: 'Herramientas', icon: WrenchScrewdriverIcon, section: 'Sistema' },
+  { path: '/users', label: 'Usuarios', icon: ShieldCheckIcon, section: 'Sistema' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {

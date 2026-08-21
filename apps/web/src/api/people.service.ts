@@ -1,0 +1,18 @@
+import api from './axios';
+
+export const peopleService = {
+  // Alumnos
+  listStudents: (search?: string) => api.get('/api/people/students', { params: { search } }).then((r) => r.data),
+  createStudent: (d: any) => api.post('/api/people/students', d).then((r) => r.data),
+  updateStudent: (id: string, d: any) => api.patch(`/api/people/students/${id}`, d).then((r) => r.data),
+  deleteStudent: (id: string) => api.delete(`/api/people/students/${id}`).then((r) => r.data),
+
+  // Docentes
+  listTeachers: (search?: string) => api.get('/api/people/teachers', { params: { search } }).then((r) => r.data),
+  createTeacher: (d: any) => api.post('/api/people/teachers', d).then((r) => r.data),
+  updateTeacher: (profileId: string, d: any) => api.patch(`/api/people/teachers/${profileId}`, d).then((r) => r.data),
+  setTeacherCourses: (profileId: string, courseIds: string[]) => api.put(`/api/people/teachers/${profileId}/courses`, { courseIds }).then((r) => r.data),
+  setTeacherTurnos: (profileId: string, turnoIds: string[]) => api.put(`/api/people/teachers/${profileId}/turnos`, { turnoIds }).then((r) => r.data),
+  setTeacherSedes: (profileId: string, sedeIds: string[]) => api.put(`/api/people/teachers/${profileId}/sedes`, { sedeIds }).then((r) => r.data),
+  setTeacherUnavailableDays: (profileId: string, days: number[]) => api.put(`/api/people/teachers/${profileId}/unavailable-days`, { days }).then((r) => r.data),
+};
