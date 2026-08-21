@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AcademicService } from './academic.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -63,10 +63,24 @@ export class AcademicController {
 
   @Post('blocks') @RequirePermissions('academic.manage')
   createBlock(@Body() b: any) { return this.svc.createBlock(b); }
+  @Get('blocks') @RequirePermissions('academic.view')
+  listBlocks(@Query('periodId') periodId?: string) {
+    return this.svc.listBlocks(periodId);
+  }
   @Delete('blocks/:id') @RequirePermissions('academic.manage')
   deleteBlock(@Param('id') id: string) { return this.svc.deleteBlock(id); }
   @Post('blocks/:id/courses') @RequirePermissions('academic.manage')
   addCourse(@Param('id') id: string, @Body('courseId') courseId: string) { return this.svc.addCourseToBlock(id, courseId); }
   @Delete('blocks/:id/courses/:courseId') @RequirePermissions('academic.manage')
   removeCourse(@Param('id') id: string, @Param('courseId') courseId: string) { return this.svc.removeCourseFromBlock(id, courseId); }
+
+  @Post('payment-plans') @RequirePermissions('payments.manage')
+  createPaymentPlan(@Body() b: any): Promise<any> { return this.svc.createPaymentPlan(b); }
+  @Get('payment-plans') @RequirePermissions('payments.view')
+  listPaymentPlans(@Query('includeInactive') include?: string): Promise<any> { return this.svc.listPaymentPlans(include === 'true'); }
+  @Patch('payment-plans/:id') @RequirePermissions('payments.manage')
+  updatePaymentPlan(@Param('id') id: string, @Body() b: any): Promise<any> { return this.svc.updatePaymentPlan(id, b); }
+  @Delete('payment-plans/:id') @RequirePermissions('payments.manage')
+  deletePaymentPlan(@Param('id') id: string): Promise<any> { return this.svc.deletePaymentPlan(id); }
+
 }

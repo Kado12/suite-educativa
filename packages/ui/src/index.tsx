@@ -17,8 +17,12 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md'
 );
 
 // ===== CARD =====
-export const Card: React.FC<{ children: React.ReactNode; className?: string; elevated?: boolean }> = ({ children, className = '', elevated }) => (
-  <div className={`card ${elevated ? 'card-elevated' : ''} ${className}`}>{children}</div>
+export const Card: React.FC<
+  React.HTMLAttributes<HTMLDivElement> & { elevated?: boolean }
+> = ({ children, className = '', elevated, ...rest }) => (
+  <div className={`card ${elevated ? 'card-elevated' : ''} ${className}`} {...rest}>
+    {children}
+  </div>
 );
 
 // ===== INPUT =====

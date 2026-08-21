@@ -6,6 +6,9 @@ import { AuthModule } from './auth/auth.module';
 import { AcademicModule } from './modules/academic/academic.module';
 import { PeopleModule } from './modules/people/people.module';
 import { UsersModule } from './modules/users/users.module';
+import { EnrollmentModule } from './modules/enrollment/enrollment.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { SchedulingModule } from './modules/scheduling/scheduling.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { UsersModule } from './modules/users/users.module';
     AcademicModule,
     PeopleModule,
     UsersModule,
+    EnrollmentModule,
+    PaymentsModule,
+    SchedulingModule,
   ],
 })
 export class AppModule {}

@@ -8,6 +8,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AcademicPage } from './pages/academic/AcademicPage';
 import { PeoplePage } from './pages/people/PeoplePage';
 import { UsersPage } from './pages/users/UsersPage';
+import { EnrollmentPage } from './pages/enrollment/EnrollmentPage';
+import { SchedulingPage } from './pages/scheduling/SchedulingPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -53,6 +55,8 @@ const App: React.FC = () => (
             <Route path="/academic" element={<AcademicPage />} />
             <Route path="/people" element={<PeoplePage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/enrollment" element={<EnrollmentPage />} />
+            <Route path="/scheduling" element={<SchedulingPage />} />
             {/* Las demás rutas irán en fases siguientes */}
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

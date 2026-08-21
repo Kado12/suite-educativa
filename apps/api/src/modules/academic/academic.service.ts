@@ -46,7 +46,7 @@ export class AcademicService {
   }
 
   // ===== SECCIONES =====
-    async createSection(d: { name?: string; classroomId: string; turnoId: string; capacity?: number; enrollmentPriority?: number }) {
+  async createSection(d: { name?: string; classroomId: string; turnoId: string; capacity?: number; enrollmentPriority?: number }) {
     if (await this.prisma.section.findFirst({ where: { classroomId: d.classroomId, turnoId: d.turnoId } }))
       throw new ConflictException('Ya existe sección para ese salón y turno');
     const [c, t] = await Promise.all([
@@ -113,6 +113,13 @@ export class AcademicService {
     if (b > 0) throw new ConflictException('El período tiene bloques');
     return this.prisma.period.delete({ where: { id } });
   }
+  async listBlocks(periodId?: string) {
+    return this.prisma.block.findMany({
+      where: periodId ? { periodId } : {},
+      include: { period: true, blockCourses: { include: { course: true } } },
+      orderBy: [{ periodId: 'asc' }, { startWeek: 'asc' }],
+    });
+  }
   async createBlock(d: { periodId: string; name: string; startWeek: number; endWeek: number }) {
     const p = await this.prisma.period.findUnique({ where: { id: d.periodId } });
     if (!p) throw new NotFoundException('Período no encontrado');
@@ -132,5 +139,31 @@ export class AcademicService {
   }
   async removeCourseFromBlock(blockId: string, courseId: string) {
     return this.prisma.blockCourse.delete({ where: { blockId_courseId: { blockId, courseId } } });
+  }
+
+    // ===== PLANES DE PAGO =====
+  async createPaymentPlan(d: { name: string; installments: number; amount: number }): Promise<any> {
+    if (await this.prisma.paymentPlan.findUnique({ where: { name: d.name } })) {
+      throw new ConflictException('Plan ya existe');
+    }
+    if (d.installments < 1) throw new BadRequestException('Debe tener al menos 1 cuota');
+    return this.prisma.paymentPlan.create({ data: { name: d.name, installments: d.installments, amount: d.amount } });
+  }
+
+  async listPaymentPlans(includeInactive = false): Promise<any> {
+    return this.prisma.paymentPlan.findMany({
+      where: includeInactive ? {} : { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async updatePaymentPlan(id: string, d: { name?: string; installments?: number; amount?: number; isActive?: boolean }): Promise<any> {
+    return this.prisma.paymentPlan.update({ where: { id }, data: d });
+  }
+
+  async deletePaymentPlan(id: string): Promise<any> {
+    const uses = await this.prisma.payment.count({ where: { paymentPlanId: id } });
+    if (uses > 0) throw new ConflictException('El plan tiene pagos asociados. Desactívalo en su lugar.');
+    return this.prisma.paymentPlan.delete({ where: { id } });
   }
 }

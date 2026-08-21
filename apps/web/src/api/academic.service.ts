@@ -27,8 +27,14 @@ export const academicService = {
   createPeriod: (d: any) => api.post('/api/academic/periods', d).then((r) => r.data),
   togglePeriod: (id: string, isActive: boolean) => api.patch(`/api/academic/periods/${id}`, { isActive }).then((r) => r.data),
   deletePeriod: (id: string) => api.delete(`/api/academic/periods/${id}`).then((r) => r.data),
+  listBlocks: (periodId?: string) => api.get('/api/academic/blocks', { params: { periodId } }).then((r) => r.data),
   createBlock: (d: any) => api.post('/api/academic/blocks', d).then((r) => r.data),
   deleteBlock: (id: string) => api.delete(`/api/academic/blocks/${id}`).then((r) => r.data),
   addCourseToBlock: (blockId: string, courseId: string) => api.post(`/api/academic/blocks/${blockId}/courses`, { courseId }).then((r) => r.data),
   removeCourseFromBlock: (blockId: string, courseId: string) => api.delete(`/api/academic/blocks/${blockId}/courses/${courseId}`).then((r) => r.data),
+  // Planes de pago
+  listPaymentPlans: (includeInactive = false) => api.get('/api/academic/payment-plans', { params: { includeInactive: String(includeInactive) } }).then((r) => r.data),
+  createPaymentPlan: (d: any) => api.post('/api/academic/payment-plans', d).then((r) => r.data),
+  updatePaymentPlan: (id: string, d: any) => api.patch(`/api/academic/payment-plans/${id}`, d).then((r) => r.data),
+  deletePaymentPlan: (id: string) => api.delete(`/api/academic/payment-plans/${id}`).then((r) => r.data),
 };

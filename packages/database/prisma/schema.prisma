@@ -319,6 +319,7 @@ model PaymentPlan {
   id           String  @id @default(cuid())
   name         String  @unique
   installments Int     @default(1)
+  amount       Decimal @db.Decimal(10, 2)
   isActive     Boolean @default(true)
 
   payments Payment[]
