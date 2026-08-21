@@ -14,6 +14,9 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ToolsModule } from './modules/tools/tools.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './modules/audit/audit.interceptor';
 
 @Module({
   imports: [
@@ -34,6 +37,10 @@ import { ToolsModule } from './modules/tools/tools.module';
     ImportsModule,
     DashboardModule,
     ToolsModule,
+    AuditModule,
   ],
+  providers: [
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor}
+  ]
 })
 export class AppModule {}

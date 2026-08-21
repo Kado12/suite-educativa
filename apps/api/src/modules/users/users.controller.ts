@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+import { Auditable } from '../audit/audit.decorator';
 
 @ApiTags('Usuarios')
 @ApiBearerAuth()
@@ -12,15 +13,15 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 export class UsersController {
   constructor(private svc: UsersService) {}
 
-  @Post() @RequirePermissions('users.create')
-  create(@Body() b: any) { return this.svc.create(b); }
-
   @Get() @RequirePermissions('users.view')
   list() { return this.svc.list(); }
 
-  @Patch(':id') @RequirePermissions('users.update')
+  @Post() @RequirePermissions('users.create') @Auditable('CREATE', 'User')
+  create(@Body() b: any) { return this.svc.create(b); }
+
+  @Patch(':id') @RequirePermissions('users.update') @Auditable('UPDATE', 'User')
   update(@Param('id') id: string, @Body() b: any) { return this.svc.update(id, b); }
 
-  @Delete(':id') @RequirePermissions('users.delete')
+  @Delete(':id') @RequirePermissions('users.delete') @Auditable('DELETE', 'User')
   remove(@Param('id') id: string, @Request() req) { return this.svc.remove(id, req.user.id); }
 }

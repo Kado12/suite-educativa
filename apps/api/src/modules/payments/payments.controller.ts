@@ -4,6 +4,7 @@ import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+import { Auditable } from '../audit/audit.decorator';
 
 @ApiTags('Pagos')
 @ApiBearerAuth()
@@ -26,14 +27,14 @@ export class PaymentsController {
     return this.svc.getStats(periodId);
   }
 
-  @Patch(':id/paid') @RequirePermissions('payments.manage')
+  @Patch(':id/paid') @RequirePermissions('payments.manage') @Auditable('MARK_PAID', 'Pago')
   markPaid(@Param('id') id: string, @Body() b: { paidAmount?: number; paidDate?: string }): Promise<any> {
     return this.svc.markPaid(id, b.paidAmount, b.paidDate);
   }
 
-  @Patch(':id/overdue') @RequirePermissions('payments.manage')
+  @Patch(':id/overdue') @RequirePermissions('payments.manage') @Auditable('MARK_OVERDUE', 'Pago')
   markOverdue(@Param('id') id: string): Promise<any> { return this.svc.markOverdue(id); }
 
-  @Patch(':id/reset') @RequirePermissions('payments.manage')
+  @Patch(':id/reset') @RequirePermissions('payments.manage') @Auditable('RESET_PAYMENT', 'Pago')
   reset(@Param('id') id: string): Promise<any> { return this.svc.resetToPending(id); }
 }
