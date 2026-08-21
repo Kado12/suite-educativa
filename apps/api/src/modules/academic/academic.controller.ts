@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AcademicService } from './academic.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+import { Response } from 'express';
 
 @ApiTags('Académico')
 @ApiBearerAuth()
@@ -40,11 +41,25 @@ export class AcademicController {
   @Post('sections') @RequirePermissions('academic.manage')
   createSection(@Body() b: any) { return this.svc.createSection(b); }
   @Get('sections') @RequirePermissions('academic.view')
-  listSections() { return this.svc.listSections(); }
-  @Patch('sections/:id/full') @RequirePermissions('academic.manage')
-  updateSectionFull(@Param('id') id: string, @Body() b: any) { return this.svc.updateSectionFull(id, b); }
+  listSections(@Query('onlyActive') onlyActive?: string) {
+    return this.svc.listSections(onlyActive === 'true');
+  }
+  @Get('sections/export')
+  @RequirePermissions('academic.view')
+  async exportSections(@Res() res: Response) {
+    const buffer = await this.svc.exportSectionsExcel();
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="secciones.xlsx"',
+    });
+    res.send(buffer);
+  }
   @Patch('sections/:id') @RequirePermissions('academic.manage')
   updateSection(@Param('id') id: string, @Body() b: any) { return this.svc.updateSection(id, b); }
+  @Patch('sections/:id/toggle') @RequirePermissions('academic.manage')
+  toggleSection(@Param('id') id: string) { return this.svc.toggleSectionActive(id); }
+  @Patch('sections/:id/full') @RequirePermissions('academic.manage')
+  updateSectionFull(@Param('id') id: string, @Body() b: any) { return this.svc.updateSectionFull(id, b); }
   @Delete('sections/:id') @RequirePermissions('academic.manage')
   deleteSection(@Param('id') id: string) { return this.svc.deleteSection(id); }
 
@@ -68,10 +83,10 @@ export class AcademicController {
   createPeriod(@Body() b: any) { return this.svc.createPeriod(b); }
   @Get('periods') @RequirePermissions('academic.view')
   listPeriods() { return this.svc.listPeriods(); }
-  @Patch('periods/:id/full') @RequirePermissions('academic.manage')
-  updatePeriodFull(@Param('id') id: string, @Body() b: any) { return this.svc.updatePeriod(id, b); }
   @Patch('periods/:id') @RequirePermissions('academic.manage')
   togglePeriod(@Param('id') id: string, @Body('isActive') isActive: boolean) { return this.svc.togglePeriod(id, isActive); }
+  @Patch('periods/:id/full') @RequirePermissions('academic.manage')
+  updatePeriodFull(@Param('id') id: string, @Body() b: any) { return this.svc.updatePeriod(id, b); }
   @Delete('periods/:id') @RequirePermissions('academic.manage')
   deletePeriod(@Param('id') id: string) { return this.svc.deletePeriod(id); }
 

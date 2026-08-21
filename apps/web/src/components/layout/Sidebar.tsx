@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import {
   AcademicCapIcon,
@@ -41,11 +42,11 @@ const MENU: MenuItem[] = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { user, logout } = useAuth();
-
-  const sections = Array.from(new Set(MENU.map((m) => m.section || 'General')));
+  const nav = useNavigate()
   const initials = user
     ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
     : '';
+  const sections = Array.from(new Set(MENU.map((m) => m.section || 'General')));
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -85,19 +86,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         })}
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-user" onClick={logout}>
-          <div className="avatar avatar-md">{initials}</div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">
-              {user?.firstName} {user?.lastName}
-            </div>
-            <div className="sidebar-user-role">Cerrar sesión</div>
+      <div className='sidebar-footer'>
+        <div
+          onClick={() => nav('/profile')}
+          className='sidebar-user'
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-neutral-50)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          <div className='avatar avatar-md'>
+            {user?.firstName.charAt(0)}{user?.lastName.charAt(0)}
           </div>
           {!collapsed && (
-            <ArrowRightOnRectangleIcon style={{ width: 18, height: 18, color: 'var(--color-neutral-400)' }} />
+            <div className='sidebar-user-info'>
+              <div className="sidebar-user-name">
+                {user?.firstName} {user?.lastName}
+              </div>
+              <div className="sidebar-user-role">{user?.role}</div>
+            </div>
           )}
         </div>
+        <button
+          onClick={logout}
+          style={{
+            width: '100%', marginTop: 8, padding: '8px 12px',
+            background: 'var(--color-danger-500)', color: 'var(--color-danger-600)',
+            border: '1px solid var(--color-danger-200)', borderRadius: 8,
+            fontSize: 'var(--text-sm)', fontWeight: 500, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          {!collapsed && (
+            <p>Cerrar sesión</p>
+          )}
+          <ArrowRightOnRectangleIcon style={{ width: 18, height: 18, color: 'var(--color-neutral-200)' }} />
+        </button>
       </div>
     </aside>
   );

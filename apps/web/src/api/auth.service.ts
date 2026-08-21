@@ -24,4 +24,9 @@ export const authService = {
     const res = await api.get('/api/auth/profile');
     return res.data;
   },
+
+  updateProfile: async (data: { firstName?: string; lastName?: string; emailPrefix?: string }) =>
+    api.patch('/api/auth/profile', data).then((r) => r.data),
+  changePassword: async (data: { currentPassword: string; newPassword: string }) =>
+    api.post('/api/auth/change-password', data).then((r) => r.data),
 };

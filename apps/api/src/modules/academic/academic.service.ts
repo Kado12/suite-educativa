@@ -103,13 +103,77 @@ export class AcademicService {
     if (!s) throw new NotFoundException('Sección no encontrada');
     return this.prisma.section.update({ where: { id }, data: d });
   }
-  async listSections() {
-    return this.prisma.section.findMany({ include: { classroom: { include: { sede: true } }, turno: true }, orderBy: { name: 'asc' } });
+  async listSections(onlyActive = false) {
+    return this.prisma.section.findMany({
+      where: onlyActive ? { isActive: true } : {},
+      include: {
+        classroom: { include: { sede: true } },
+        turno: true,
+        _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } },
+      },
+      orderBy: [{ classroom: { sede: { name: 'asc' } } }, { name: 'asc' }],
+    });
+  }
+  async toggleSectionActive(id: string) {
+    const s = await this.prisma.section.findUnique({ where: { id } });
+    if (!s) throw new NotFoundException('Sección no encontrada');
+    return this.prisma.section.update({ where: { id }, data: { isActive: !s.isActive } });
   }
   async deleteSection(id: string) {
     const count = await this.prisma.enrollment.count({ where: { sectionId: id } });
     if (count > 0) throw new ConflictException('La sección tiene matrículas');
     return this.prisma.section.delete({ where: { id } });
+  }
+  async exportSectionsExcel(): Promise<Buffer> {
+    const ExcelJS = require('exceljs');
+    const sections = await this.prisma.section.findMany({
+      include: {
+        classroom: { include: { sede: true } },
+        turno: true,
+        enrollments: { where: { status: 'ACTIVE' } },
+      },
+      orderBy: [{ classroom: { sede: { name: 'asc' } } }, { name: 'asc' }],
+    });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Secciones');
+
+    ws.columns = [
+      { header: 'Sede', key: 'sede', width: 20 },
+      { header: 'Salón', key: 'salon', width: 12 },
+      { header: 'Sección', key: 'seccion', width: 14 },
+      { header: 'Turno', key: 'turno', width: 12 },
+      { header: 'Cupo', key: 'cupo', width: 8 },
+      { header: 'Matriculados', key: 'matriculados', width: 12 },
+      { header: 'Ocupación', key: 'ocupacion', width: 10 },
+      { header: 'Estado', key: 'estado', width: 10 },
+    ];
+
+    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+
+    for (const s of sections) {
+      const enrolled = s.enrollments.length;
+      const pct = s.capacity > 0 ? Math.round((enrolled / s.capacity) * 100) : 0;
+      const row = ws.addRow({
+        sede: s.classroom.sede.name,
+        salon: s.classroom.name,
+        seccion: s.name,
+        turno: s.turno.name,
+        cupo: s.capacity,
+        matriculados: enrolled,
+        ocupacion: `${pct}%`,
+        estado: s.isActive ? 'Activa' : 'Inactiva',
+      });
+      if (pct >= 90) {
+        row.getCell('ocupacion').font = { bold: true, color: { argb: 'FFDC2626' } };
+      } else if (pct >= 70) {
+        row.getCell('ocupacion').font = { color: { argb: 'FFD97706' } };
+      }
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   // ===== ÁREAS / CURSOS =====

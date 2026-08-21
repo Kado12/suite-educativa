@@ -81,3 +81,8 @@ export const ConfirmModal: React.FC<{ isOpen: boolean; onClose: () => void; onCo
     </div>
   </Modal>
 );
+
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableOption, SearchableSelectProps } from './SearchableSelect';
+export { Pagination } from './Pagination';
+export type { PaginationProps } from './Pagination';

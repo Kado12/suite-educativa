@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `sections` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true;
