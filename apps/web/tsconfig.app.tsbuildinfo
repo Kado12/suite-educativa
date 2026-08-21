@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/api/auth.service.ts","./src/api/axios.ts","./src/components/layout/applayout.tsx","./src/components/layout/header.tsx","./src/components/layout/sidebar.tsx","./src/context/authcontext.tsx","./src/context/toastcontext.tsx","./src/pages/dashboardpage.tsx","./src/pages/loginpage.tsx"],"version":"5.9.3"}
