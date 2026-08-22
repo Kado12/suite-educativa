@@ -5,6 +5,7 @@ import { useToast } from '../../../context/ToastContext';
 import { enrollmentService } from '../../../api/enrollment.service';
 import { peopleService } from '../../../api/people.service';
 import { academicService } from '../../../api/academic.service';
+import { EnrollmentWizard } from '../EnrollmentWizard';
 
 const STATUS_COLORS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   ACTIVE: 'success',
@@ -28,6 +29,7 @@ export const MatriculasTab: React.FC = () => {
   const [del, setDel] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
   const [sectionInfo, setSectionInfo] = useState<string>('');
+  const [showWizard, setShowWizard] = useState(false);
 
   const load = async () => {
     const [p, s, stu, pl, stats] = await Promise.all([
@@ -141,7 +143,7 @@ export const MatriculasTab: React.FC = () => {
         <Select label="Período" value={activePeriod} onChange={(e) => setActivePeriod(e.target.value)} style={{ minWidth: 200 }}
           options={[{ value: '', label: 'Todos los períodos' }, ...periods.map((p: any) => ({ value: p.id, label: p.name }))]} />
         <Input placeholder="Buscar alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-        <Button onClick={() => setShowForm(true)}><PlusIcon style={{ width: 16, height: 16 }} /> Nueva matrícula</Button>
+        <Button onClick={() => setShowWizard(true)}><PlusIcon style={{ width: 16, height: 16 }} /> Nueva matrícula</Button>
       </div>
 
       <Card className="p-0">
@@ -196,6 +198,7 @@ export const MatriculasTab: React.FC = () => {
       <ConfirmModal isOpen={!!del} onClose={() => setDel(null)} onConfirm={handleDelete}
         title="Eliminar matrícula" message={`¿Eliminar la matrícula de ${del?.student?.firstName} ${del?.student?.lastName}? (Solo si no tiene pagos registrados)`}
         isLoading={saving} />
+      <EnrollmentWizard isOpen={showWizard} onClose={() => setShowWizard(false)} onDone={() => loadEnrollments(activePeriod)} />
     </div>
   );
 };

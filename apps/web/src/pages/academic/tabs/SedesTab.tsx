@@ -102,7 +102,7 @@ export const SedesTab: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => openEditSede(s)} className="btn btn-ghost btn-icon" title="Editar sede">
-                    <PencilIcon style={{ width: 16, height: 16 }} />
+                    <PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} />
                   </button>
                   <button onClick={() => setDel({ type: 'sede', id: s.id, name: s.name })} className="btn btn-ghost btn-icon" title="Eliminar sede">
                     <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />
@@ -128,7 +128,7 @@ export const SedesTab: React.FC = () => {
                       <Badge color="primary">{c.sections.length} secciones</Badge>
                       <div style={{ display: 'flex', gap: 2 }}>
                         <button onClick={() => openEditSalon(c, s.id)} className="btn btn-ghost btn-icon" title="Editar salón">
-                          <PencilIcon style={{ width: 14, height: 14 }} />
+                          <PencilIcon style={{ width: 14, height: 14, color: 'var(--color-success-700)'  }} />
                         </button>
                         <button onClick={() => setDel({ type: 'salon', id: c.id, name: c.name })} className="btn btn-ghost btn-icon" title="Eliminar salón">
                           <TrashIcon style={{ width: 14, height: 14, color: 'var(--color-danger-500)' }} />

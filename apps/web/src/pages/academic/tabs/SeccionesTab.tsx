@@ -158,7 +158,7 @@ export const SeccionesTab: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: 0 }}>{t.name}</h4>
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button onClick={() => openEditTurno(t)} className="btn btn-ghost btn-icon"><PencilIcon style={{ width: 14, height: 14 }} /></button>
+                    <button onClick={() => openEditTurno(t)} className="btn btn-ghost btn-icon"><PencilIcon style={{ width: 14, height: 14, color: 'var(--color-success-700)'  }} /></button>
                     <button onClick={() => setDel({ type: 'turno', id: t.id, name: t.name })} className="btn btn-ghost btn-icon"><TrashIcon style={{ width: 14, height: 14, color: 'var(--color-danger-500)' }} /></button>
                   </div>
                 </div>
@@ -219,14 +219,14 @@ export const SeccionesTab: React.FC = () => {
                       <Badge color={occupancyColor}>{enrolled}/{s.capacity} ({pct}%)</Badge>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <Badge color={s.isActive ? 'success' : 'neutral'}>{s.isActive ? 'Activa' : 'Inactiva'}</Badge>
+                      <Badge color={s.isActive ? 'success' : 'danger'}>{s.isActive ? 'Activa' : 'Inactiva'}</Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button onClick={() => toggleActive(s)} className="btn btn-ghost btn-icon" title={s.isActive ? 'Desactivar' : 'Activar'}>
-                        <PowerIcon style={{ width: 16, height: 16, color: s.isActive ? 'var(--color-success-500)' : 'var(--color-neutral-400)' }} />
+                        <PowerIcon style={{ width: 16, height: 16, color: s.isActive ? 'var(--color-extra-600)' : 'var(--color-neutral-400)' }} />
                       </button>
                       <button onClick={() => openEditSec(s)} className="btn btn-ghost btn-icon" title="Editar">
-                        <PencilIcon style={{ width: 16, height: 16 }} />
+                        <PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} />
                       </button>
                       <button onClick={() => setDel({ type: 'sec', id: s.id, name: s.name })} className="btn btn-ghost btn-icon" title="Eliminar">
                         <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />

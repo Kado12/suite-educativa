@@ -30,6 +30,11 @@ export class EnrollmentController {
   stats(@Query('periodId') periodId?: string) {
     return this.svc.getStats(periodId);
   }
+  
+  @Get('active/:studentId') @RequirePermissions('enrollment.view')
+  getActive(@Param('studentId') studentId: string): Promise<any> {
+    return this.svc.getActiveEnrollment(studentId);
+  }
 
   @Patch(':id/status') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Matricula')
   updateStatus(@Param('id') id: string, @Body('status') status: string) {
@@ -38,4 +43,29 @@ export class EnrollmentController {
 
   @Delete(':id') @RequirePermissions('enrollment.manage') @Auditable('DELETE', 'Matricula')
   delete(@Param('id') id: string) { return this.svc.delete(id); }
+
+  @Get('check-student') @RequirePermissions('enrollment.view')
+  checkStudent(@Query('dni') dni: string, @Query('periodId') periodId: string) {
+    return this.svc.checkStudent(dni, periodId);
+  }
+
+  @Get('suggest-section') @RequirePermissions('enrollment.view')
+  suggestSection(@Query('sedeId') sedeId: string, @Query('turnoId') turnoId: string): Promise<any>  {
+    return this.svc.suggestSection(sedeId, turnoId);
+  }
+
+  @Post('wizard') @RequirePermissions('enrollment.manage') @Auditable('CREATE', 'Enrollment')
+  createWizard(@Body() b: any): Promise<any>  {
+    return this.svc.createWizard(b);
+  }
+
+  @Patch('active/section') @RequirePermissions('enrollment.manage') @Auditable('UPDATE_SECTION', 'Enrollment')
+  updateActiveSection(@Body() b: { studentId: string; sectionId: string }) {
+    return this.svc.updateActiveEnrollmentSection(b.studentId, b.sectionId);
+  }
+
+  @Patch(':id/change-plan') @RequirePermissions('enrollment.manage') @Auditable('CHANGE_PLAN', 'Enrollment')
+  changePlan(@Param('id') id: string, @Body() b: { planId: string; forceRestore: boolean }) {
+    return this.svc.changePaymentPlan(id, b.planId, b.forceRestore);
+  }
 }

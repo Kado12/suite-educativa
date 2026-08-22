@@ -149,7 +149,7 @@ export const UsersPage: React.FC = () => {
                       <td style={{ textAlign: 'right' }}>
                         {u.id === me?.id && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-400)', marginRight: 8 }}>Tú</span>}
                         {canUpdate && u.id !== me?.id && (
-                          <button onClick={() => openEdit(u)} style={{ color: 'var(--color-primary-600)', marginRight: 8 }}><PencilIcon style={{ width: 16, height: 16 }} /></button>
+                          <button onClick={() => openEdit(u)} style={{ color: 'var(--color-primary-600)', marginRight: 8 }}><PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} /></button>
                         )}
                         {canDelete && u.isActive && u.id !== me?.id && (
                           <button onClick={() => setDel(u)} style={{ color: 'var(--color-danger-500)' }}><TrashIcon style={{ width: 16, height: 16 }} /></button>

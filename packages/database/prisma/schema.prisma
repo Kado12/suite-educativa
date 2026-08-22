@@ -39,15 +39,22 @@ enum ValidationStatus {
   OBSERVED
 }
 
+enum DocType {
+  DNI
+  CARNET
+}
+
 // ==================== PERSONAS Y USUARIOS ====================
 
 model Person {
   id        String    @id @default(cuid())
+  docType   DocType   @default(DNI)        // ← NUEVO
   firstName String
   lastName  String
   dni       String?   @unique
   phone     String?
   email     String?
+  photoUrl  String?                         // ← NUEVO (URL de Cloudinary)
   birthDate DateTime? @db.Date
   gender    String?
   address   String?

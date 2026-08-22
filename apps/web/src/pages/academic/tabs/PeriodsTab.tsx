@@ -156,7 +156,7 @@ export const PeriodsTab: React.FC = () => {
                   {p.isActive ? 'Desactivar' : 'Activar'}
                 </button>
                 <button onClick={() => openEditPeriod(p)} className="btn btn-ghost btn-icon" title="Editar período">
-                  <PencilIcon style={{ width: 16, height: 16 }} />
+                  <PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} />
                 </button>
                 <button onClick={() => setDel({ type: 'period', id: p.id, name: p.name })} className="btn btn-ghost btn-icon" title="Eliminar período">
                   <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />
@@ -186,7 +186,7 @@ export const PeriodsTab: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 2 }}>
                           <button onClick={() => openEditBlock(b)} className="btn btn-ghost btn-icon" title="Editar bloque">
-                            <PencilIcon style={{ width: 14, height: 14 }} />
+                            <PencilIcon style={{ width: 14, height: 14, color: 'var(--color-success-700)'  }} />
                           </button>
                           <button onClick={() => setDel({ type: 'block', id: b.id, name: b.name })} className="btn btn-ghost btn-icon" title="Eliminar bloque">
                             <TrashIcon style={{ width: 14, height: 14, color: 'var(--color-danger-500)' }} />

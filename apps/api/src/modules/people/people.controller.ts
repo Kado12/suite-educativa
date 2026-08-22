@@ -18,8 +18,14 @@ export class PeopleController {
   createStudent(@Body() b: any) { return this.svc.createStudent(b); }
   @Get('students') @RequirePermissions('enrollment.view')
   listStudents(@Query('search') search?: string) { return this.svc.listStudents(search); }
+  @Get('students/:id/enrollments') @RequirePermissions('enrollment.view')
+  getEnrollments(@Param('id') id: string): Promise<any> { return this.svc.getStudentEnrollments(id); }
+  @Get('students/:id/photo-info') @RequirePermissions('enrollment.view')
+  getPhotoInfo(@Param('id') id: string, @Query('newDni') newDni: string) { return this.svc.replaceStudentPhoto(id, newDni); }
   @Patch('students/:id') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Estudiante')
   updateStudent(@Param('id') id: string, @Body() b: any) { return this.svc.updatePerson(id, b); }
+  @Patch('students/:id/full') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Student')
+  updateStudentFull(@Param('id') id: string, @Body() b: any) { return this.svc.updateStudentFull(id, b); }
   @Delete('students/:id') @RequirePermissions('enrollment.manage') @Auditable('DELETE', 'Estudiante')
   deleteStudent(@Param('id') id: string) { return this.svc.deletePerson(id); }
 

@@ -63,7 +63,7 @@ export const PlansTab: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, margin: 0 }}>{p.name}</h3>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => openEdit(p)} style={{ color: 'var(--color-primary-600)' }}><PencilIcon style={{ width: 16, height: 16 }} /></button>
+                <button onClick={() => openEdit(p)} style={{ color: 'var(--color-primary-600)' }}><PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} /></button>
                 <button onClick={() => setDel(p)} style={{ color: 'var(--color-danger-500)' }}><TrashIcon style={{ width: 16, height: 16 }} /></button>
               </div>
             </div>

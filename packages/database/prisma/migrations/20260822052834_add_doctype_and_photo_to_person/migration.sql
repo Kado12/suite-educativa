@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `persons` ADD COLUMN `docType` ENUM('DNI', 'CARNET') NOT NULL DEFAULT 'DNI',
+    ADD COLUMN `photoUrl` VARCHAR(191) NULL;

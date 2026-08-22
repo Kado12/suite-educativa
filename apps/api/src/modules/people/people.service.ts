@@ -1,9 +1,71 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 
 @Injectable()
 export class PeopleService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private uploadService: UploadService) {}
+
+  private validateDocument(docType: string, dni: string) {
+    if (docType === 'DNI') {
+      if (!/^\d{8}$/.test(dni)) throw new BadRequestException('El DNI debe tener exactamente 8 dígitos');
+    } else {
+      if (!/^0\d{0,8}$/.test(dni)) throw new BadRequestException('El Carnet de Extranjería debe comenzar con 0 y tener hasta 9 dígitos');
+    }
+  }
+
+  async updateStudentFull(id: string, data: {
+    firstName?: string; lastName?: string; docType?: string; dni?: string;
+    phone?: string; email?: string; birthDate?: string; gender?: string; address?: string; photoUrl?: string
+  }) {
+    const person = await this.prisma.person.findUnique({ where: { id } });
+    if (!person) throw new NotFoundException('Alumno no encontrado');
+
+    const updateData: any = {};
+    let renamedPhotoUrl: string | null = null;
+
+    if (data.photoUrl !== undefined) updateData.photoUrl = data.photoUrl;
+
+    // Si cambió el documento, validar y renombrar foto
+    if (data.dni && data.dni !== person.dni) {
+      const docType = data.docType || person.docType;
+      this.validateDocument(docType, data.dni);
+
+      const exists = await this.prisma.person.findFirst({ where: { dni: data.dni, NOT: { id } } });
+      if (exists) throw new ConflictException('Ya existe una persona con ese documento');
+
+      updateData.dni = data.dni;
+      updateData.docType = docType;
+
+      // Renombrar foto en Cloudinary
+      if (person.photoUrl && person.dni) {
+        const oldPid = person.dni;
+        const newPid = data.dni;
+        renamedPhotoUrl = await this.uploadService.renameImage(oldPid, newPid);
+        if (renamedPhotoUrl) updateData.photoUrl = renamedPhotoUrl;
+      }
+    }
+
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.birthDate !== undefined) updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.address !== undefined) updateData.address = data.address;
+
+    return this.prisma.person.update({ where: { id }, data: updateData });
+  }
+
+  async replaceStudentPhoto(id: string, newDni: string) {
+    const person = await this.prisma.person.findUnique({ where: { id } });
+    if (!person) throw new NotFoundException('Alumno no encontrado');
+    // Devuelve el publicId viejo para que el frontend lo use al reemplazar
+    return {
+      oldPublicId: person.dni || null,
+      newPublicId: newDni
+    };
+  }
 
   // ===== ALUMNOS =====
   async createStudent(data: {
@@ -55,6 +117,18 @@ export class PeopleService {
         },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+  }
+
+  async getStudentEnrollments(personId: string): Promise<any> {
+    return this.prisma.enrollment.findMany({
+      where: { studentId: personId },
+      include: {
+        section: { include: { classroom: { include: { sede: true } }, turno: true } },
+        period: true,
+        payments: { orderBy: { installment: 'asc' } },
+      },
+      orderBy: { enrolledAt: 'desc' },
     });
   }
 

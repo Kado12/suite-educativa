@@ -17,6 +17,8 @@ import { ToolsModule } from './modules/tools/tools.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { UploadModule } from './modules/upload/upload.module';
+import { PdfModule } from './modules/pdf/pdf.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { AuditInterceptor } from './modules/audit/audit.interceptor';
     DashboardModule,
     ToolsModule,
     AuditModule,
+    UploadModule,
+    PdfModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor}

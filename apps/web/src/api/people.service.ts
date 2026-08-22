@@ -2,10 +2,13 @@ import api from './axios';
 
 export const peopleService = {
   // Alumnos
-  listStudents: (search?: string) => api.get('/api/people/students', { params: { search } }).then((r) => r.data),
+  listStudents: (search?: string) => api.get('/api/people/students', { params: { search, _t: Date.now() } }).then((r) => r.data),
   createStudent: (d: any) => api.post('/api/people/students', d).then((r) => r.data),
+  getStudentEnrollments: (id: string) => api.get(`/api/people/students/${id}/enrollments`).then((r) => r.data),
   updateStudent: (id: string, d: any) => api.patch(`/api/people/students/${id}`, d).then((r) => r.data),
   deleteStudent: (id: string) => api.delete(`/api/people/students/${id}`).then((r) => r.data),
+  updateStudentFull: (id: string, d: any) => api.patch(`/api/people/students/${id}/full`, d).then((r) => r.data),
+  getPhotoInfo: (id: string, newDni: string) => api.get(`/api/people/students/${id}/photo-info`, { params: { newDni } }).then((r) => r.data),
 
   // Docentes
   listTeachers: (search?: string) => api.get('/api/people/teachers', { params: { search } }).then((r) => r.data),

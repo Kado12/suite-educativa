@@ -98,7 +98,7 @@ export const AreasTab: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 2 }}>
                   <button onClick={() => openEditArea(a)} className="btn btn-ghost btn-icon" title="Editar área">
-                    <PencilIcon style={{ width: 14, height: 14 }} />
+                    <PencilIcon style={{ width: 14, height: 14, color: 'var(--color-success-700)' }} />
                   </button>
                   <button onClick={() => setDel({ type: 'area', id: a.id, name: a.name })} className="btn btn-ghost btn-icon" title="Eliminar área">
                     <TrashIcon style={{ width: 14, height: 14, color: 'var(--color-danger-500)' }} />
@@ -118,7 +118,7 @@ export const AreasTab: React.FC = () => {
                       <BookOpenIcon style={{ width: 14, height: 14, color: 'var(--color-neutral-500)', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-neutral-800)' }}>{c.name}</span>
                       <button onClick={() => openEditCourse(c)} className="btn btn-ghost btn-icon" title="Editar curso">
-                        <PencilIcon style={{ width: 13, height: 13 }} />
+                        <PencilIcon style={{ width: 13, height: 13, color: 'var(--color-success-700)'  }} />
                       </button>
                       <button onClick={() => setDel({ type: 'course', id: c.id, name: c.name })} className="btn btn-ghost btn-icon" title="Eliminar curso">
                         <TrashIcon style={{ width: 13, height: 13, color: 'var(--color-danger-500)' }} />

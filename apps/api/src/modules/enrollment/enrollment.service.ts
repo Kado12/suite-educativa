@@ -5,14 +5,254 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class EnrollmentService {
   constructor(private prisma: PrismaService) {}
 
+  private validateDocument(docType: string, dni: string) {
+    if (docType === 'DNI') {
+      if (!/^\d{8}$/.test(dni)) throw new BadRequestException('El DNI debe tener exactamente 8 dígitos');
+    } else {
+      if (!/^0\d{0,8}$/.test(dni)) throw new BadRequestException('El Carnet de Extranjería debe comenzar con 0 y tener hasta 9 dígitos');
+    }
+  }
+
+  /**
+   * Verifica si un documento ya existe y si tiene matrícula activa en el período.
+   * El frontend lo usa para mostrar preview y bloquear si corresponde.
+   */
+  async checkStudent(dni: string, periodId: string) {
+    const person = await this.prisma.person.findUnique({
+      where: { dni },
+      include: {
+        enrollments: {
+          where: { periodId, status: 'ACTIVE' },
+          include: { section: { include: { classroom: { include: { sede: true } }, turno: true } }, period: true },
+        },
+      },
+    });
+    if (!person) return { exists: false, hasActiveEnrollment: false, student: null };
+    return {
+      exists: true,
+      hasActiveEnrollment: person.enrollments.length > 0,
+      student: {
+        id: person.id,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        dni: person.dni,
+        photoUrl: person.photoUrl,
+        activeEnrollment: person.enrollments[0] || null,
+      },
+    };
+  }
+
+  /**
+   * Sugiere la mejor sección disponible: sede + turno + activa + con cupo, ordenada por prioridad.
+   */
+  async suggestSection(sedeId: string, turnoId: string) {
+    const sections = await this.prisma.section.findMany({
+      where: { isActive: true, turnoId, classroom: { sedeId } },
+      include: {
+        classroom: { include: { sede: true } },
+        turno: true,
+        enrollments: { where: { status: 'ACTIVE' } },
+      },
+      orderBy: { enrollmentPriority: 'desc' },
+    });
+
+    const available = sections
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        capacity: s.capacity,
+        enrolled: s.enrollments.length,
+        available: s.capacity - s.enrollments.length,
+        priority: s.enrollmentPriority,
+      }))
+      .filter((s) => s.available > 0);
+
+    return available[0] || null;
+  }
+
+  /**
+   * Wizard: crea Person + Enrollment + Payments en una sola transacción.
+   */
+  async createWizard(d: {
+    firstName: string; lastName: string; docType: string; dni: string;
+    phone?: string; email?: string; birthDate?: string; gender?: string; photoUrl?: string;
+    sectionId: string; periodId: string; paymentPlanId: string; firstPaymentPaid: boolean;
+  }): Promise<any>  {
+    this.validateDocument(d.docType, d.dni);
+
+    const [section, period, plan] = await Promise.all([
+      this.prisma.section.findUnique({ where: { id: d.sectionId }, include: { enrollments: { where: { status: 'ACTIVE' } } } }),
+      this.prisma.period.findUnique({ where: { id: d.periodId } }),
+      this.prisma.paymentPlan.findUnique({ where: { id: d.paymentPlanId } }),
+    ]);
+    if (!section) throw new NotFoundException('Sección no encontrada');
+    if (!period) throw new NotFoundException('Período no encontrado');
+    if (!plan) throw new NotFoundException('Plan de pago no encontrado');
+    if (!section.isActive) throw new BadRequestException('La sección no está activa');
+
+    // Validar cupo
+    if (section.enrollments.length >= section.capacity) {
+      throw new ConflictException(`La sección está llena (${section.enrollments.length}/${section.capacity})`);
+    }
+
+    // Verificar si el documento ya tiene matrícula activa en el período
+    const existing = await this.prisma.person.findUnique({
+      where: { dni: d.dni },
+      include: { enrollments: { where: { periodId: d.periodId, status: 'ACTIVE' } } },
+    });
+    if (existing && existing.enrollments.length > 0) {
+      throw new ConflictException(`Ya existe alumno: ${existing.lastName}, ${existing.firstName}`);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Crear o recuperar Person
+      let person = await tx.person.findUnique({ where: { dni: d.dni } });
+      if (!person) {
+        person = await tx.person.create({
+          data: {
+            firstName: d.firstName,
+            lastName: d.lastName,
+            docType: d.docType as any,
+            dni: d.dni,
+            phone: d.phone || null,
+            email: d.email || null,
+            photoUrl: d.photoUrl || null,
+            birthDate: d.birthDate ? new Date(d.birthDate) : null,
+            gender: d.gender || null,
+          },
+        });
+      }
+
+      // 2. Crear Enrollment
+      const enrollment = await tx.enrollment.create({
+        data: { studentId: person.id, sectionId: d.sectionId, periodId: d.periodId, status: 'ACTIVE' },
+      });
+
+      // 3. Generar cuotas
+      const installmentAmount = Number(plan.amount) / plan.installments;
+      const today = new Date();
+      for (let i = 0; i < plan.installments; i++) {
+        const dueDate = new Date(today);
+        dueDate.setUTCMonth(dueDate.getUTCMonth() + i);
+        dueDate.setUTCDate(1);
+
+        const isFirstAndPaid = i === 0 && d.firstPaymentPaid;
+        await tx.payment.create({
+          data: {
+            enrollmentId: enrollment.id,
+            paymentPlanId: plan.id,
+            installment: i + 1,
+            amount: installmentAmount,
+            dueDate,
+            status: isFirstAndPaid ? 'PAID' : 'PENDING',
+            paidAmount: isFirstAndPaid ? installmentAmount : null,
+            paidDate: isFirstAndPaid ? today : null,
+          },
+        });
+      }
+
+      return tx.enrollment.findUnique({
+        where: { id: enrollment.id },
+        include: {
+          student: true,
+          section: { include: { classroom: { include: { sede: true } }, turno: true } },
+          period: true,
+          payments: { orderBy: { installment: 'asc' } },
+        },
+      });
+    });
+  }
+
+  async updateActiveEnrollmentSection(studentId: string, sectionId: string) {
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: { studentId, status: 'ACTIVE' },
+      orderBy: { enrolledAt: 'desc' },
+    });
+    if (!enrollment) throw new NotFoundException('No hay matrícula activa para este alumno');
+
+    if (enrollment.sectionId !== sectionId) {
+      const section = await this.prisma.section.findUnique({
+        where: { id: sectionId },
+        include: { enrollments: { where: { status: 'ACTIVE', NOT: { id: enrollment.id } } } },
+      });
+      if (!section) throw new NotFoundException('Sección no encontrada');
+      if (!section.isActive) throw new BadRequestException('La sección no está activa');
+      if (section.enrollments.length >= section.capacity) {
+        throw new ConflictException(`La sección está llena (${section.enrollments.length}/${section.capacity})`);
+      }
+    }
+
+    return this.prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: { sectionId },
+      include: { section: { include: { classroom: { include: { sede: true } }, turno: true } } },
+    });
+  }
+
+  async changePaymentPlan(enrollmentId: string, newPlanId: string, forceRestore: boolean):Promise<any> {
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { payments: true },
+    });
+    if (!enrollment) throw new NotFoundException('Matrícula no encontrada');
+
+    const paidCount = enrollment.payments.filter((p) => p.status === 'PAID').length;
+    if (paidCount > 0 && !forceRestore) {
+      return { requiresConfirmation: true, paidCount };
+    }
+
+    const plan = await this.prisma.paymentPlan.findUnique({ where: { id: newPlanId } });
+    if (!plan) throw new NotFoundException('Plan de pago no encontrado');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.payment.deleteMany({ where: { enrollmentId } });
+
+      const installmentAmount = Number(plan.amount) / plan.installments;
+      const today = new Date();
+      for (let i = 0; i < plan.installments; i++) {
+        const dueDate = new Date(today);
+        dueDate.setUTCMonth(dueDate.getUTCMonth() + i);
+        dueDate.setUTCDate(1);
+        await tx.payment.create({
+          data: {
+            enrollmentId,
+            paymentPlanId: plan.id,
+            installment: i + 1,
+            amount: installmentAmount,
+            dueDate,
+            status: 'PENDING',
+          },
+        });
+      }
+
+      return tx.enrollment.findUnique({
+        where: { id: enrollmentId },
+        include: { payments: { orderBy: { installment: 'asc' } } },
+      });
+    });
+  }
+
+  async getActiveEnrollment(studentId: string): Promise<any> {
+    return this.prisma.enrollment.findFirst({
+      where: { studentId, status: 'ACTIVE' },
+      orderBy: { enrolledAt: 'desc' },
+      include: {
+        student: true,
+        section: { include: { classroom: { include: { sede: true } }, turno: true } },
+        period: true,
+        payments: { orderBy: { installment: 'asc' }, include: { paymentPlan: true } },
+      },
+    });
+  }
+
   async create(d: {
   studentId: string;
   sectionId: string;
   periodId: string;
   paymentPlanId: string;
-}): Promise<any> {
-  // Validar que exista todo
-  const [student, section, period, plan] = await Promise.all([
+  }): Promise<any> {
+    // Validar que exista todo
+    const [student, section, period, plan] = await Promise.all([
       this.prisma.person.findUnique({ where: { id: d.studentId } }),
       this.prisma.section.findUnique({ where: { id: d.sectionId } }),
       this.prisma.period.findUnique({ where: { id: d.periodId } }),
