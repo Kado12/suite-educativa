@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CheckIcon, ExclamationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { Card, Button, Input, Select, Modal, Badge } from '@suite/ui';
+import { Card, Button, Input, Select, Modal, Badge, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { paymentsService } from '../../../api/payments.service';
 import { academicService } from '../../../api/academic.service';
@@ -22,6 +22,16 @@ export const PaymentsTab: React.FC = () => {
   const [payModal, setPayModal] = useState<any | null>(null);
   const [payData, setPayData] = useState({ paidAmount: '', paidDate: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const paginatedPayments = useMemo(()=>{
+    const start = (currentPage - 1) * pageSize;
+    return payments.slice(start, start + pageSize);
+  }, [payments, currentPage, pageSize])
+
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter, activePeriod, pageSize]);
 
   const load = async () => {
     const [p, stats] = await Promise.all([
@@ -132,7 +142,7 @@ export const PaymentsTab: React.FC = () => {
               <tr><th>Alumno</th><th>Cuota</th><th>Monto</th><th>Vence</th><th>Estado</th><th>Pagado</th><th></th></tr>
             </thead>
             <tbody>
-              {payments.map((p) => (
+              {paginatedPayments.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <strong>{p.enrollment.student.lastName}, {p.enrollment.student.firstName}</strong>
@@ -184,6 +194,15 @@ export const PaymentsTab: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {payments.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={payments.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        )}
       </Card>
 
       <Modal isOpen={!!payModal} onClose={() => setPayModal(null)} title="Registrar pago">

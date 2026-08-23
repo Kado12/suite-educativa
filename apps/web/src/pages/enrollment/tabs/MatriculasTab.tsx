@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Card, Button, Input, Select, Modal, ConfirmModal, Badge } from '@suite/ui';
+import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { enrollmentService } from '../../../api/enrollment.service';
 import { peopleService } from '../../../api/people.service';
@@ -30,6 +30,16 @@ export const MatriculasTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [sectionInfo, setSectionInfo] = useState<string>('');
   const [showWizard, setShowWizard] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const paginatedEnrollments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return enrollments.slice(start, start + pageSize);
+  }, [enrollments, currentPage, pageSize]);
+
+  useEffect(() => { setCurrentPage(1); }, [search, activePeriod, pageSize]);
 
   const load = async () => {
     const [p, s, stu, pl, stats] = await Promise.all([
@@ -153,7 +163,7 @@ export const MatriculasTab: React.FC = () => {
               <tr><th>Alumno</th><th>Sección</th><th>Turno</th><th>Plan</th><th>Estado</th><th>Fecha</th><th></th></tr>
             </thead>
             <tbody>
-              {enrollments.map((e) => (
+              {paginatedEnrollments.map((e) => (
                 <tr key={e.id}>
                   <td>
                     <strong>{e.student.lastName}, {e.student.firstName}</strong>
@@ -178,6 +188,15 @@ export const MatriculasTab: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {enrollments.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={enrollments.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        )}
       </Card>
 
       <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Nueva matrícula">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AcademicCapIcon, CurrencyDollarIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { MatriculasTab } from './tabs/MatriculasTab';
-import { PaymentsTab } from './tabs/PaymentsPage';
+import { PaymentsTab } from './tabs/PaymentsTab';
 import { PlansTab } from './tabs/PlansTab';
 
 const TABS = [
