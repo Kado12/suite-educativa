@@ -18,4 +18,11 @@ export const enrollmentService = {
     api.patch(`/api/enrollments/${enrollmentId}/change-plan`, { planId, forceRestore }).then((r) => r.data),
   getActiveEnrollment: (studentId: string) =>
     api.get(`/api/enrollments/active/${studentId}`).then((r) => r.data),
+  exportExcel: async (filters: any = {}) => {
+    const res = await api.get('/api/enrollments/export', { params: filters, responseType: 'blob' });
+    const url = window.URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'matriculas.xlsx'; link.click();
+    window.URL.revokeObjectURL(url);
+  },
 };

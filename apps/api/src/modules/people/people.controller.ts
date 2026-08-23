@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PeopleService } from './people.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { Auditable } from '../audit/audit.decorator';
+import { Response } from 'express';
 
 @ApiTags('Personas')
 @ApiBearerAuth()
@@ -18,6 +19,12 @@ export class PeopleController {
   createStudent(@Body() b: any) { return this.svc.createStudent(b); }
   @Get('students') @RequirePermissions('enrollment.view')
   listStudents(@Query('search') search?: string) { return this.svc.listStudents(search); }
+  @Get('students/export') @RequirePermissions('enrollment.view')
+  async exportStudents(@Query('search') search: string, @Res() res: Response) {
+    const b = await this.svc.exportStudentsExcel(search);
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="alumnos.xlsx"' });
+    res.send(b);
+  }
   @Get('students/:id/enrollments') @RequirePermissions('enrollment.view')
   getEnrollments(@Param('id') id: string): Promise<any> { return this.svc.getStudentEnrollments(id); }
   @Get('students/:id/photo-info') @RequirePermissions('enrollment.view')

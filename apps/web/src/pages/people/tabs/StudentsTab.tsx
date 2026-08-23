@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, MagnifyingGlassIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, MagnifyingGlassIcon, DocumentArrowDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { peopleService } from '../../../api/people.service';
@@ -55,11 +55,13 @@ export const StudentsTab: React.FC = () => {
     finally { setSaving(false); }
   };
 
+  const handleExport = async () => {
+    try { await peopleService.exportStudents(search || undefined); success('📥 Lista de alumnos descargada'); }
+    catch (err: any) { error(err.response?.data?.message || 'Error al exportar'); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <Input placeholder="Buscar por nombre o documento..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
-      </div>
 
       <Card>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -71,6 +73,10 @@ export const StudentsTab: React.FC = () => {
               <h3 className="card-title">Alumnos</h3>
               <p className="card-subtitle" style={{ margin: 0 }}>{students.length} registrados</p>
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <Input placeholder="Buscar por nombre o documento..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
+            <Button variant="success" onClick={handleExport}><ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar</Button>
           </div>
         </div>
 

@@ -111,7 +111,7 @@ export const TeachersTab: React.FC = () => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <Badge color="primary">Prioridad: {p.priority}</Badge>
+                <Badge color="warning">Prioridad: {p.priority}</Badge>
                 {p.yearsExperience && <Badge color="neutral">{p.yearsExperience} años exp.</Badge>}
                 <Badge color="success">{p.courses.length} cursos</Badge>
               </div>

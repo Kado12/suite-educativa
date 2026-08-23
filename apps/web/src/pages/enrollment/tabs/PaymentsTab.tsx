@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CheckIcon, ExclamationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ExclamationCircleIcon, ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, Badge, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { paymentsService } from '../../../api/payments.service';
@@ -94,6 +94,11 @@ export const PaymentsTab: React.FC = () => {
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
+  const handleExport = async () => {
+    try { await paymentsService.exportExcel({ periodId: activePeriod, status: statusFilter, studentSearch: search }); success('📥 Excel de pagos descargado'); }
+    catch (err: any) { error(err.response?.data?.message || 'Error al exportar'); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {stats && (
@@ -133,6 +138,7 @@ export const PaymentsTab: React.FC = () => {
             { value: 'OVERDUE', label: 'Vencidos' },
           ]} />
         <Input placeholder="Buscar alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+        <Button variant="success" onClick={handleExport}><ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar</Button>
       </div>
 
       <Card className="p-0">

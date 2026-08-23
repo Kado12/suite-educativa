@@ -1,10 +1,11 @@
-import { Controller, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { Auditable } from '../audit/audit.decorator';
+import { Response } from 'express';
 
 @ApiTags('Pagos')
 @ApiBearerAuth()
@@ -25,6 +26,13 @@ export class PaymentsController {
   @Get('stats') @RequirePermissions('payments.view')
   stats(@Query('periodId') periodId?: string) {
     return this.svc.getStats(periodId);
+  }
+
+  @Get('export') @RequirePermissions('payments.view')
+  async export(@Query('periodId') periodId: string, @Query('status') status: string, @Query('studentSearch') studentSearch: string, @Res() res: Response) {
+    const b = await this.svc.exportExcel({ periodId, status, studentSearch });
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="pagos.xlsx"' });
+    res.send(b);
   }
 
   @Patch(':id/paid') @RequirePermissions('payments.manage') @Auditable('MARK_PAID', 'Pago')

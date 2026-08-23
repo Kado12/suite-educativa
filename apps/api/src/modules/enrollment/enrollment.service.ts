@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class EnrollmentService {
@@ -395,5 +396,39 @@ export class EnrollmentService {
       overduePayments,
       totalPaid: Number(totalRevenue._sum.paidAmount || 0),
     };
+  }
+
+  async exportExcel(filters: { periodId?: string; sectionId?: string; status?: string; studentSearch?: string }): Promise<Buffer> {
+    const enrollments = await this.list(filters);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Matriculas');
+
+    ws.addRow(['REPORTE DE MATRÍCULAS']);
+    ws.getRow(1).font = { bold: true, size: 14 };
+    ws.addRow([`Total: ${enrollments.length}`]);
+    ws.addRow([]);
+
+    const headers = ['Alumno', 'Documento', 'Sección', 'Sede', 'Turno', 'Período', 'Plan de pago', 'Estado', 'Inscripción', 'Cuotas pagadas'];
+    const hr = ws.addRow(headers);
+    hr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+    [26, 12, 12, 14, 10, 14, 18, 10, 12, 12].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+    for (const e of enrollments) {
+      const paid = e.payments.filter((p: any) => p.status === 'PAID').length;
+      ws.addRow([
+        `${e.student.lastName}, ${e.student.firstName}`,
+        e.student.dni || '',
+        e.section.name,
+        e.section.classroom.sede.name,
+        e.section.turno.name,
+        e.period.name,
+        e.payments[0]?.paymentPlan?.name || '',
+        e.status,
+        new Date(e.enrolledAt).toLocaleDateString(),
+        `${paid}/${e.payments.length}`,
+      ]);
+    }
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 }

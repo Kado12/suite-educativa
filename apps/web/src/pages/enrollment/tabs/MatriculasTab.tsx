@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { enrollmentService } from '../../../api/enrollment.service';
@@ -121,6 +121,11 @@ export const MatriculasTab: React.FC = () => {
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
+  const handleExport = async () => {
+    try { await enrollmentService.exportExcel({ periodId: activePeriod, studentSearch: search }); success('📥 Matrículas exportadas'); }
+    catch (err: any) { error(err.response?.data?.message || 'Error al exportar'); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Stats */}
@@ -154,6 +159,7 @@ export const MatriculasTab: React.FC = () => {
           options={[{ value: '', label: 'Todos los períodos' }, ...periods.map((p: any) => ({ value: p.id, label: p.name }))]} />
         <Input placeholder="Buscar alumno..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
         <Button onClick={() => setShowWizard(true)}><PlusIcon style={{ width: 16, height: 16 }} /> Nueva matrícula</Button>
+        <Button variant="success" onClick={handleExport}><ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar</Button>
       </div>
 
       <Card className="p-0">

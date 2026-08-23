@@ -9,6 +9,13 @@ export const peopleService = {
   deleteStudent: (id: string) => api.delete(`/api/people/students/${id}`).then((r) => r.data),
   updateStudentFull: (id: string, d: any) => api.patch(`/api/people/students/${id}/full`, d).then((r) => r.data),
   getPhotoInfo: (id: string, newDni: string) => api.get(`/api/people/students/${id}/photo-info`, { params: { newDni } }).then((r) => r.data),
+  exportStudents: async (search?: string) => {
+    const res = await api.get('/api/people/students/export', { params: { search }, responseType: 'blob' });
+    const url = window.URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'alumnos.xlsx'; link.click();
+    window.URL.revokeObjectURL(url);
+  },
 
   // Docentes
   listTeachers: (search?: string) => api.get('/api/people/teachers', { params: { search } }).then((r) => r.data),

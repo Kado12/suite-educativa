@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { EnrollmentService } from './enrollment.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { Auditable } from '../audit/audit.decorator';
+import { Response } from 'express';
 
 @ApiTags('Matrículas')
 @ApiBearerAuth()
@@ -29,6 +30,13 @@ export class EnrollmentController {
   @Get('stats') @RequirePermissions('enrollment.view')
   stats(@Query('periodId') periodId?: string) {
     return this.svc.getStats(periodId);
+  }
+
+  @Get('export') @RequirePermissions('enrollment.view')
+  async export(@Query('periodId') periodId: string, @Query('status') status: string, @Query('studentSearch') studentSearch: string, @Res() res: Response) {
+    const b = await this.svc.exportExcel({ periodId, status, studentSearch });
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="matriculas.xlsx"' });
+    res.send(b);
   }
   
   @Get('active/:studentId') @RequirePermissions('enrollment.view')

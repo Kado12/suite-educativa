@@ -43,9 +43,7 @@ const MENU: MenuItem[] = [
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { user, logout } = useAuth();
   const nav = useNavigate()
-  const initials = user
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
-    : '';
+
   const sections = Array.from(new Set(MENU.map((m) => m.section || 'General')));
 
   return (
@@ -109,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           onClick={logout}
           style={{
             width: '100%', marginTop: 8, padding: '8px 12px',
-            background: 'var(--color-danger-500)', color: 'var(--color-danger-600)',
+            background: 'var(--color-danger-600)', color: 'var(--color-danger-100)',
             border: '1px solid var(--color-danger-200)', borderRadius: 8,
             fontSize: 'var(--text-sm)', fontWeight: 500, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

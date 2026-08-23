@@ -129,9 +129,6 @@ export const SeccionesTab: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Button variant="secondary" onClick={handleExport}>
-          <ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar Excel
-        </Button>
         <Button variant="secondary" onClick={openCreateSec}><PlusIcon style={{ width: 16, height: 16 }} /> Sección</Button>
         <Button onClick={openCreateTurno}><PlusIcon style={{ width: 16, height: 16 }} /> Turno</Button>
       </div>
@@ -184,12 +181,17 @@ export const SeccionesTab: React.FC = () => {
               <p className="card-subtitle" style={{ margin: 0 }}>{sections.filter((s) => s.isActive).length} activas de {sections.length}</p>
             </div>
           </div>
-          <div style={{ width: 280 }}>
-            <Input
-              placeholder="Buscar por sección, salón, sede..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 280 }}>
+              <Input
+                placeholder="Buscar por sección, salón, sede..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button variant="success" onClick={handleExport}>
+              <ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar Excel
+            </Button>
           </div>
         </div>
 

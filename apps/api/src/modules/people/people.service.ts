@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UploadService } from '../upload/upload.service';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class PeopleService {
@@ -146,6 +147,38 @@ export class PeopleService {
     const count = await this.prisma.enrollment.count({ where: { studentId: id } });
     if (count > 0) throw new ConflictException('La persona tiene matrículas');
     return this.prisma.person.delete({ where: { id } });
+  }
+
+  async exportStudentsExcel(search?: string): Promise<Buffer> {
+    const students = await this.listStudents(search);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Alumnos');
+
+    ws.addRow(['LISTA DE ALUMNOS']);
+    ws.getRow(1).font = { bold: true, size: 14 };
+    ws.addRow([`Total: ${students.length}`]);
+    ws.addRow([]);
+
+    const headers = ['Apellidos', 'Nombres', 'Tipo doc.', 'Documento', 'Celular', 'Correo', 'Fecha nac.', 'Género', 'Sección actual', 'Sede', 'Turno'];
+    const hr = ws.addRow(headers);
+    hr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+    [18, 18, 10, 12, 12, 26, 12, 8, 12, 14, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+    const g: Record<string, string> = { M: 'Masculino', F: 'Femenino', O: 'Otro' };
+    for (const s of students) {
+      const enr = s.enrollments?.[0];
+      ws.addRow([
+        s.lastName, s.firstName, s.docType === 'CARNET' ? 'Carnet Ext.' : 'DNI', s.dni || '',
+        s.phone || '', s.email || '',
+        s.birthDate ? new Date(s.birthDate).toLocaleDateString() : '',
+        g[s.gender] || '',
+        enr?.section?.name || 'Sin matrícula',
+        enr?.section?.classroom?.sede?.name || '',
+        enr?.section?.turno?.name || '',
+      ]);
+    }
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 
   // ===== DOCENTES =====
