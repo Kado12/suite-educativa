@@ -38,7 +38,7 @@ export class PaymentsService {
     });
   }
 
-  async markPaid(id: string, paidAmount?: number, paidDate?: string): Promise<any> {
+    async markPaid(id: string, paidAmount?: number, paidDate?: string, reference?: string): Promise<any> {
     const p = await this.prisma.payment.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('Pago no encontrado');
     return this.prisma.payment.update({
@@ -47,6 +47,7 @@ export class PaymentsService {
         status: 'PAID',
         paidAmount: paidAmount !== undefined ? paidAmount : Number(p.amount),
         paidDate: paidDate ? new Date(paidDate) : new Date(),
+        reference: reference || null,
       },
     });
   }
@@ -77,10 +78,15 @@ export class PaymentsService {
       this.prisma.payment.aggregate({ where: { ...where, status: 'OVERDUE' }, _sum: { amount: true }, _count: true }),
     ]);
 
+    const soon = new Date();
+    soon.setUTCDate(soon.getUTCDate() + 7);
+    const dueSoon = await this.prisma.payment.count({ where: { status: 'PENDING', dueDate: { lte: soon } } });
+
     return {
       pending: { count: pending._count, amount: Number(pending._sum.amount || 0) },
       paid: { count: paid._count, amount: Number(paid._sum.paidAmount || 0) },
       overdue: { count: overdue._count, amount: Number(overdue._sum.amount || 0) },
+      dueSoon
     };
   }
 

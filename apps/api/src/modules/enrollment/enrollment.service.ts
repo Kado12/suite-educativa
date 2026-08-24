@@ -431,4 +431,20 @@ export class EnrollmentService {
     }
     return Buffer.from(await wb.xlsx.writeBuffer());
   }
+
+  async getReEnrollmentPending(periodId: string) {
+    const [prev, current] = await Promise.all([
+      this.prisma.enrollment.findMany({ where: { status: 'ACTIVE', NOT: { periodId } }, include: { student: true, period: true } }),
+      this.prisma.enrollment.findMany({ where: { status: 'ACTIVE', periodId }, select: { studentId: true } }),
+    ]);
+    const currentIds = new Set(current.map((c) => c.studentId));
+    const seen = new Set<string>();
+    const pending: any[] = [];
+    for (const e of prev) {
+      if (currentIds.has(e.studentId) || seen.has(e.studentId)) continue;
+      seen.add(e.studentId);
+      pending.push({ id: e.student.id, name: `${e.student.lastName}, ${e.student.firstName}`, dni: e.student.dni, lastPeriod: e.period.name });
+    }
+    return pending;
+  }
 }

@@ -44,6 +44,9 @@ export class EnrollmentController {
     return this.svc.getActiveEnrollment(studentId);
   }
 
+  @Get('re-enrollment-pending') @RequirePermissions('enrollment.view')
+  reEnrollment(@Query('periodId') periodId: string) { return this.svc.getReEnrollmentPending(periodId); }
+
   @Patch(':id/status') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Matricula')
   updateStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.svc.updateStatus(id, status);

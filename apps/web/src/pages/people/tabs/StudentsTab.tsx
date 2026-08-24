@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, MagnifyingGlassIcon, DocumentArrowDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, MagnifyingGlassIcon, DocumentArrowDownIcon, ArrowDownTrayIcon, IdentificationIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { peopleService } from '../../../api/people.service';
@@ -19,6 +19,7 @@ export const StudentsTab: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const [reloadKey, setReloadKey] = useState(0);
+  const [fSede, setFSede] = useState(''); const [fTurno, setFTurno] = useState('');
 
   // Modal eliminar
   const [del, setDel] = useState<any | null>(null);
@@ -34,6 +35,11 @@ export const StudentsTab: React.FC = () => {
     const t = setTimeout(() => load(), 200);
     return () => clearTimeout(t);
   }, [search, reloadKey, load]);
+
+  const filtered = students.filter((s) => {
+    const enr = s.enrollments?.[0];
+    return (!fSede || enr?.section?.classroom?.sede?.id === fSede) && (!fTurno || enr?.section?.turno?.id === fTurno);
+  });
 
   // Paginación
   const paginated = useMemo(() => {
@@ -135,6 +141,10 @@ export const StudentsTab: React.FC = () => {
                       >
                         <DocumentArrowDownIcon style={{ width: 16, height: 16, color: 'var(--color-extra-600)' }} />
                       </button>
+                      <button onClick={async () => { try { await pdfService.downloadStudentCard(s.id, s.dni); success('Carné descargado'); } catch { error('Error'); } }}
+                        className="btn btn-ghost btn-icon" title="Carné estudiantil">
+                        <IdentificationIcon style={{ width: 16, height: 16, color: 'var(--color-primary-600)' }} />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -146,7 +156,7 @@ export const StudentsTab: React.FC = () => {
           </table>
         </div>
 
-        {students.length > 0 && (
+        {filtered.length > 0 && (
           <Pagination currentPage={currentPage} pageSize={pageSize} totalItems={students.length} onPageChange={setCurrentPage} onPageSizeChange={setPageSize} />
         )}
       </Card>

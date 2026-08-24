@@ -13,4 +13,10 @@ export const paymentsService = {
     link.href = url; link.download = 'pagos.xlsx'; link.click();
     window.URL.revokeObjectURL(url);
   },
+  downloadReceipt: async (id: string) => {
+    const res = await api.get(`/api/pdf/payment-receipt/${id}`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(res.data);
+    const a = document.createElement('a'); a.href = url; a.download = 'recibo.pdf'; a.click();
+    window.URL.revokeObjectURL(url);
+  },
 };

@@ -20,7 +20,7 @@ export const PaymentsTab: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [payModal, setPayModal] = useState<any | null>(null);
-  const [payData, setPayData] = useState({ paidAmount: '', paidDate: new Date().toISOString().split('T')[0] });
+  const [payData, setPayData] = useState({ paidAmount: '', paidDate: new Date().toISOString().split('T')[0], reference: '' });
   const [saving, setSaving] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,10 +74,11 @@ export const PaymentsTab: React.FC = () => {
       await paymentsService.markPaid(payModal.id, {
         paidAmount: payData.paidAmount ? parseFloat(payData.paidAmount) : undefined,
         paidDate: payData.paidDate,
+        reference: payData.reference || undefined,
       });
       success('Pago registrado');
       setPayModal(null);
-      setPayData({ paidAmount: '', paidDate: new Date().toISOString().split('T')[0] });
+      setPayData({ paidAmount: '', paidDate: new Date().toISOString().split('T')[0], reference: '' });
       loadPayments(activePeriod);
       paymentsService.stats(activePeriod).then(setStats);
     } catch (err: any) { error(err.response?.data?.message || 'Error'); }
@@ -173,7 +174,7 @@ export const PaymentsTab: React.FC = () => {
                   <td style={{ textAlign: 'right' }}>
                     {p.status === 'PENDING' && (
                       <>
-                        <Button size="sm" variant="success" onClick={() => { setPayModal(p); setPayData({ paidAmount: String(Number(p.amount)), paidDate: new Date().toISOString().split('T')[0] }); }}>
+                        <Button size="sm" variant="success" onClick={() => { setPayModal(p); setPayData({ paidAmount: String(Number(p.amount)), paidDate: new Date().toISOString().split('T')[0], reference: p.reference }); }}>
                           <CheckIcon style={{ width: 14, height: 14 }} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => markOverdue(p.id)} style={{ marginLeft: 4 }}>
@@ -182,12 +183,15 @@ export const PaymentsTab: React.FC = () => {
                       </>
                     )}
                     {p.status === 'PAID' && (
-                      <Button size="sm" variant="ghost" onClick={() => resetPayment(p.id)}>
-                        <ArrowPathIcon style={{ width: 14, height: 14 }} />
-                      </Button>
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => resetPayment(p.id)}>
+                          <ArrowPathIcon style={{ width: 14, height: 14 }} />
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => paymentsService.downloadReceipt(p.id)} title="Recibo">🧾</Button>
+                      </>
                     )}
                     {p.status === 'OVERDUE' && (
-                      <Button size="sm" variant="success" onClick={() => { setPayModal(p); setPayData({ paidAmount: String(Number(p.amount)), paidDate: new Date().toISOString().split('T')[0] }); }}>
+                      <Button size="sm" variant="success" onClick={() => { setPayModal(p); setPayData({ paidAmount: String(Number(p.amount)), paidDate: new Date().toISOString().split('T')[0], reference:  p.reference }); }}>
                         <CheckIcon style={{ width: 14, height: 14 }} />
                       </Button>
                     )}
@@ -226,6 +230,8 @@ export const PaymentsTab: React.FC = () => {
               onChange={(e) => setPayData({ ...payData, paidAmount: e.target.value })} required />
             <Input label="Fecha de pago" type="date" value={payData.paidDate}
               onChange={(e) => setPayData({ ...payData, paidDate: e.target.value })} required />
+            <Input label="Referencia / N° operación (opcional)" value={payData.reference}
+              onChange={(e) => setPayData({ ...payData, reference: e.target.value })} />
             <Button type="submit" isLoading={saving}>Confirmar pago</Button>
           </form>
         )}

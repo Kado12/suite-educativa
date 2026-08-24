@@ -31,4 +31,26 @@ export class PdfController {
     });
     res.send(buffer);
   }
+
+  @Get('payment-receipt/:paymentId')
+  async paymentReceipt(@Param('paymentId') id: string, @Res() res: Response) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: { enrollment: { include: { student: true, section: { include: { classroom: { include: { sede: true } } } }, period: true } }, paymentPlan: true },
+    });
+    if (!payment) return res.status(404).json({ message: 'Pago no encontrado' });
+    const buffer = await this.pdfService.generatePaymentReceipt(payment);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="recibo-${payment.installment}.pdf"` });
+    res.send(buffer);
+  }
+
+  @Get('student-card/:studentId')
+  async studentCard(@Param('studentId') id: string, @Res() res: Response) {
+    const student = await this.prisma.person.findUnique({ where: { id } });
+    if (!student) return res.status(404).json({ message: 'Alumno no encontrado' });
+    const enrollment = await this.enrollmentService.getActiveEnrollment(id);
+    const buffer = await this.pdfService.generateStudentCard(student, enrollment);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="carne-${student.dni || id}.pdf"` });
+    res.send(buffer);
+  }
 }

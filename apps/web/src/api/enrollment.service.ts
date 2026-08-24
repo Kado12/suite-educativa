@@ -25,4 +25,5 @@ export const enrollmentService = {
     link.href = url; link.download = 'matriculas.xlsx'; link.click();
     window.URL.revokeObjectURL(url);
   },
+  reEnrollmentPending: (periodId: string) => api.get('/api/enrollments/re-enrollment-pending', { params: { periodId } }).then((r) => r.data),
 };

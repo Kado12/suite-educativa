@@ -345,6 +345,7 @@ model Payment {
   paidDate      DateTime?     @db.Date
   paidAmount    Decimal?      @db.Decimal(10, 2)
   status        PaymentStatus @default(PENDING)
+  reference     String?
 
   enrollment  Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   paymentPlan PaymentPlan? @relation(fields: [paymentPlanId], references: [id], onDelete: SetNull)

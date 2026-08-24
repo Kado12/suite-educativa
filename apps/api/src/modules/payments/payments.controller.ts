@@ -35,9 +35,9 @@ export class PaymentsController {
     res.send(b);
   }
 
-  @Patch(':id/paid') @RequirePermissions('payments.manage') @Auditable('MARK_PAID', 'Pago')
-  markPaid(@Param('id') id: string, @Body() b: { paidAmount?: number; paidDate?: string }): Promise<any> {
-    return this.svc.markPaid(id, b.paidAmount, b.paidDate);
+  @Patch(':id/paid') @RequirePermissions('payments.manage') @Auditable('MARK_PAID', 'Payment')
+  markPaid(@Param('id') id: string, @Body() b: { paidAmount?: number; paidDate?: string; reference?: string }): Promise <any> {
+    return this.svc.markPaid(id, b.paidAmount, b.paidDate, b.reference);
   }
 
   @Patch(':id/overdue') @RequirePermissions('payments.manage') @Auditable('MARK_OVERDUE', 'Pago')

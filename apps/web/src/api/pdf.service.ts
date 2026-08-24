@@ -10,4 +10,11 @@ export const pdfService = {
     link.click();
     window.URL.revokeObjectURL(url);
   },
+
+  downloadStudentCard: async (id: string, dni?: string) => {
+    const res = await api.get(`/api/pdf/student-card/${id}`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(res.data);
+    const a = document.createElement('a'); a.href = url; a.download = `carne-${dni || id}.pdf`; a.click();
+    window.URL.revokeObjectURL(url);
+  },
 };

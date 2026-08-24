@@ -34,12 +34,20 @@ export const MatriculasTab: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
+  const [sedes, setSedes] = useState<any[]>([]); const [turnos, setTurnos] = useState<any[]>([]);
+  const [fSede, setFSede] = useState(''); const [fTurno, setFTurno] = useState(''); const [fStatus, setFStatus] = useState('');
+  const [rePending, setRePending] = useState<any[]>([]);
+
   const paginatedEnrollments = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return enrollments.slice(start, start + pageSize);
   }, [enrollments, currentPage, pageSize]);
 
   useEffect(() => { setCurrentPage(1); }, [search, activePeriod, pageSize]);
+  // Cargar sedes/turnos y rematrícula:
+  useEffect(() => { academicService.listSedes().then(setSedes); academicService.listTurnos().then(setTurnos); }, []);
+  useEffect(() => { if (activePeriod) enrollmentService.reEnrollmentPending(activePeriod).then(setRePending); }, [activePeriod]);
+
 
   const load = async () => {
     const [p, s, stu, pl, stats] = await Promise.all([
@@ -85,6 +93,11 @@ export const MatriculasTab: React.FC = () => {
       setSectionInfo(`${list.length}/${s.capacity} alumnos matriculados · Prioridad: ${s.enrollmentPriority}`);
     });
   }, [form.sectionId]);
+
+  const filtered = enrollments.filter((e) =>
+  (!fSede || e.section.classroom.sede.id === fSede) &&
+  (!fTurno || e.section.turno.id === fTurno) &&
+  (!fStatus || e.status === fStatus));
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -151,6 +164,12 @@ export const MatriculasTab: React.FC = () => {
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginBottom: 4 }}>Ingresos registrados</div>
             <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success-700)' }}>S/ {stats.totalPaid.toFixed(2)}</div>
           </Card>
+          {rePending.length > 0 && (
+            <Card style={{ background: 'var(--color-warning-50)', borderColor: 'var(--color-warning-500)' }}>
+              <strong style={{ color: 'var(--color-warning-700)' }}>⚠️ {rePending.length} alumno(s) del período anterior sin matrícula activa:</strong>
+              <div style={{ fontSize: 'var(--text-sm)', marginTop: 6 }}>{rePending.slice(0, 8).map((r) => r.name).join(' · ')}{rePending.length > 8 && ' …'}</div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -185,6 +204,10 @@ export const MatriculasTab: React.FC = () => {
                       <button onClick={() => changeStatus(e.id, 'WITHDRAWN')} className="btn btn-ghost btn-sm">Retirar</button>
                     )}
                     <button onClick={() => setDel(e)} style={{ color: 'var(--color-danger-500)', marginLeft: 4 }}><TrashIcon style={{ width: 16, height: 16 }} /></button>
+                    <select className="select" style={{ width: 'auto', padding: '4px 8px', fontSize: 'var(--text-xs)' }} value={e.status}
+                      onChange={async (ev) => { await enrollmentService.updateStatus(e.id, ev.target.value); loadEnrollments(activePeriod); }}>
+                      <option value="ACTIVE">Activa</option><option value="TRANSFERRED">Trasladado</option><option value="WITHDRAWN">Retirado</option>
+                    </select>
                   </td>
                 </tr>
               ))}
@@ -194,7 +217,7 @@ export const MatriculasTab: React.FC = () => {
             </tbody>
           </table>
         </div>
-        {enrollments.length > 0 && (
+        {filtered.length > 0 && (
           <Pagination
             currentPage={currentPage}
             pageSize={pageSize}
