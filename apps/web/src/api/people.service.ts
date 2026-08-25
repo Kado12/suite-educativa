@@ -21,6 +21,7 @@ export const peopleService = {
   listTeachers: (search?: string) => api.get('/api/people/teachers', { params: { search } }).then((r) => r.data),
   createTeacher: (d: any) => api.post('/api/people/teachers', d).then((r) => r.data),
   updateTeacher: (profileId: string, d: any) => api.patch(`/api/people/teachers/${profileId}`, d).then((r) => r.data),
+  updateTeacherFull: (profileId: string, d: any) => api.patch(`/api/people/teachers/${profileId}/full`, d).then((r) => r.data),
   deleteTeacher: (profileId: string) => api.delete(`/api/people/teachers/${profileId}`).then((r) => r.data),
   setTeacherCourses: (profileId: string, courseIds: string[]) => api.put(`/api/people/teachers/${profileId}/courses`, { courseIds }).then((r) => r.data),
   setTeacherTurnos: (profileId: string, turnoIds: string[]) => api.put(`/api/people/teachers/${profileId}/turnos`, { turnoIds }).then((r) => r.data),

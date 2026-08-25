@@ -260,6 +260,37 @@ export class PeopleService {
     return this.prisma.teacherProfile.update({ where: { id: teacherProfileId }, data });
   }
 
+  async updateTeacherFull(profileId: string, data: {
+    firstName?: string; lastName?: string; dni?: string; phone?: string; email?: string;
+    priority?: number; yearsExperience?: number; maxSessionsPerWeek?: number; maxSections?: number;
+  }) {
+    const profile = await this.prisma.teacherProfile.findUnique({ where: { id: profileId }, include: { person: true } });
+    if (!profile) throw new NotFoundException('Perfil docente no encontrado');
+
+    const personData: any = {};
+    if (data.dni && data.dni !== profile.person.dni) {
+      const exists = await this.prisma.person.findFirst({ where: { dni: data.dni, NOT: { id: profile.personId } } });
+      if (exists) throw new ConflictException('Ya existe una persona con ese documento');
+      personData.dni = data.dni;
+    }
+    if (data.firstName !== undefined) personData.firstName = data.firstName;
+    if (data.lastName !== undefined) personData.lastName = data.lastName;
+    if (data.phone !== undefined) personData.phone = data.phone;
+    if (data.email !== undefined) personData.email = data.email;
+
+    const profileData: any = {};
+    if (data.priority !== undefined) profileData.priority = data.priority;
+    if (data.yearsExperience !== undefined) profileData.yearsExperience = data.yearsExperience;
+    if (data.maxSessionsPerWeek !== undefined) profileData.maxSessionsPerWeek = data.maxSessionsPerWeek;
+    if (data.maxSections !== undefined) profileData.maxSections = data.maxSections;
+
+    return this.prisma.$transaction(async (tx) => {
+      const person = await tx.person.update({ where: { id: profile.personId }, data: personData });
+      const prof = await tx.teacherProfile.update({ where: { id: profileId }, data: profileData });
+      return { person, profile: prof };
+    });
+  }
+
   async deleteTeacher(profileId: string) {
     const profile = await this.prisma.teacherProfile.findUnique({ where: { id: profileId }, include: { sessions: true } });
     if (!profile) throw new NotFoundException('Perfil docente no encontrado');

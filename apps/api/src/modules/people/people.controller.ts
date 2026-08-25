@@ -43,6 +43,8 @@ export class PeopleController {
   listTeachers(@Query('search') search?: string) { return this.svc.listTeachers(search); }
   @Patch('teachers/:profileId') @RequirePermissions('academic.manage') @Auditable('UPDATE', 'Docente')
   updateTeacher(@Param('profileId') id: string, @Body() b: any) { return this.svc.updateTeacherProfile(id, b); }
+  @Patch('teachers/:profileId/full') @RequirePermissions('academic.manage') @Auditable('UPDATE', 'Docente')
+  updateTeacherFull(@Param('profileId') id: string, @Body() b: any) { return this.svc.updateTeacherFull(id, b); }
   @Put('teachers/:profileId/courses') @RequirePermissions('academic.manage') @Auditable('UPDATE_COURSE', 'Docente - Curso')
   setCourses(@Param('profileId') id: string, @Body('courseIds') ids: string[]) { return this.svc.setTeacherCourses(id, ids || []); }
   @Put('teachers/:profileId/turnos') @RequirePermissions('academic.manage') @Auditable('UPDATE_TURNS', 'Docente - Turno')

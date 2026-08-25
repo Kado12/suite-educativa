@@ -4,6 +4,7 @@ import { Card, Button, Input, Modal, Badge, ConfirmModal, Select } from '@suite/
 import { useToast } from '../../../context/ToastContext';
 import { peopleService } from '../../../api/people.service';
 import { academicService } from '../../../api/academic.service';
+import { EditTeacherModal } from '../modals/EditTeacherModal';
 
 export const TeachersTab: React.FC = () => {
   const { success, error } = useToast();
@@ -21,6 +22,9 @@ export const TeachersTab: React.FC = () => {
   const [sedes, setSedes] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [sedeForDays, setSedeForDays] = useState('');
+
+  const [showEditTeacher, setShowEditTeacher] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
 
   const load = (s?: string) => peopleService.listTeachers(s).then(setTeachers).catch(() => error('Error'));
   useEffect(() => {
@@ -96,14 +100,6 @@ export const TeachersTab: React.FC = () => {
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
-  // DÍAS: el botón pasa "¿está no-disponible ahora?" → si está, quitar; si no, agregar
-  const toggleDay = async (day: number, present: boolean) => {
-    const current = showConfig.teacherProfile.unavailableDays.map((d: any) => d.dayOfWeek);
-    const next = present ? current.filter((x: number) => x !== day) : Array.from(new Set([...current, day]));
-    try { await peopleService.setTeacherUnavailableDays(showConfig.teacherProfile.id, next); await refreshConfig(); }
-    catch (err: any) { error(err.response?.data?.message || 'Error'); }
-  };
-
   const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
   return (
@@ -124,8 +120,11 @@ export const TeachersTab: React.FC = () => {
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', margin: '2px 0 0' }}>DNI: {t.dni}</p>
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => { setSelectedTeacher(t); setShowEditTeacher(true); }} className="btn btn-ghost btn-sm" title="Editar datos">
+                    <PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-500)'  }} />
+                  </button>
                   <button onClick={() => openConfig(t)} className="btn btn-ghost btn-sm" title="Configurar disponibilidad">
-                    <Cog6ToothIcon style={{ width: 16, height: 16 }} />
+                    <Cog6ToothIcon style={{ width: 16, height: 16, color: 'var(--color-primary-500)'  }} />
                   </button>
                   <button onClick={() => setDelTeacher(t)} className="btn btn-ghost btn-sm" title="Eliminar docente">
                     <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />
@@ -243,6 +242,7 @@ export const TeachersTab: React.FC = () => {
         })()}
       </Modal>
       
+      <EditTeacherModal isOpen={showEditTeacher} teacher={selectedTeacher} onClose={() => setShowEditTeacher(false)} onSaved={() => load(search || undefined)} />
       <ConfirmModal isOpen={!!delTeacher} onClose={() => setDelTeacher(null)} onConfirm={handleDeleteTeacher}
         title="Eliminar docente" message={`¿Eliminar a ${delTeacher?.firstName} ${delTeacher?.lastName}? Se eliminará su perfil y disponibilidad.`} isLoading={saving} />
     </div>
