@@ -156,22 +156,30 @@ export class AttendanceService {
     });
 
     const dayRows = days.map((d, i) => {
-      const records = sessions.flatMap((s) =>
-        s.attendances.filter((a) => formatDate(a.date) === formatDate(d)).map((a) => ({
-          id: a.id, status: a.status, lateMinutes: a.lateMinutes,
-          courseName: s.course.name, sedeName: s.section.classroom.sede.name, hours: SESSION_HOURS,
-        })),
-      );
-      const presents = records.filter((r) => r.status === 'PRESENT');
-      const absents = records.filter((r) => r.status === 'ABSENT');
+      const daySessions = sessions.filter((s) => s.dayOfWeek === i + 1);
+      // Todas las clases programadas del día, con su asistencia (o null si no se registró)
+      const classes = daySessions.map((s) => {
+        const att = s.attendances.find((a) => formatDate(a.date) === formatDate(d));
+        return {
+          courseName: s.course.name,
+          sectionName: s.section.name,
+          sedeName: s.section.classroom.sede.name,
+          slot: s.slot,
+          status: att ? att.status : null,
+          lateMinutes: att ? att.lateMinutes : 0,
+        };
+      });
+
+      const presents = classes.filter((c) => c.status === 'PRESENT');
+      const absents = classes.filter((c) => c.status === 'ABSENT');
       return {
         date: formatDate(d),
         dayName: DAY_NAMES[i + 1],
-        hours: presents.reduce((sum, r) => sum + r.hours, 0),
-        lateMinutes: presents.reduce((sum, r) => sum + r.lateMinutes, 0),
+        hours: presents.length * SESSION_HOURS,
+        lateMinutes: presents.reduce((sum, c) => sum + (c.lateMinutes || 0), 0),
         presents: presents.length,
         absents: absents.length,
-        records,
+        classes,
       };
     });
 

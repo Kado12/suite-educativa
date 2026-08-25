@@ -8,8 +8,10 @@ export const importsService = {
     link.href = url; link.download = `plantilla-${type}.xlsx`; link.click();
     window.URL.revokeObjectURL(url);
   },
-  importFile: (type: string, file: File) => {
-    const fd = new FormData(); fd.append('file', file);
+  importFile: (type: string, file: File, extra: Record<string, string> = {}) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    Object.entries(extra).forEach(([k, v]) => fd.append(k, v));
     return api.post(`/api/imports/${type}`, fd).then((r) => r.data);
   },
 };

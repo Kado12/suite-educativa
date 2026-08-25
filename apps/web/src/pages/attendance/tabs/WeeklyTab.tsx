@@ -5,6 +5,13 @@ import { attendanceService } from '../../../api/attendance.service';
 import { academicService } from '../../../api/academic.service';
 import { peopleService } from '../../../api/people.service';
 
+const StatusBadge: React.FC<{ c: any }> = ({ c }) => {
+  if (!c.status) return <span className="badge badge-neutral">Sin registrar</span>;
+  if (c.status === 'ABSENT') return <span className="badge badge-danger">Faltó</span>;
+  if (c.lateMinutes > 0) return <span className="badge badge-warning">Tardó {c.lateMinutes}'</span>;
+  return <span className="badge badge-success">Asistió</span>;
+};
+
 export const WeeklyTab: React.FC = () => {
   const { error } = useToast();
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -47,12 +54,13 @@ export const WeeklyTab: React.FC = () => {
 
       {weekly && (
         <>
+          {/* Tabla resumen */}
           <Card className="p-0">
             <table className="table">
               <thead>
                 <tr>
                   {weekly.days.map((d: any) => (
-                    <th key={d.date}>{d.dayName[0]}<br /><span style={{ fontWeight: 400, fontSize: 'var(--text-xs)' }}>{d.date.slice(5)}</span></th>
+                    <th key={d.date}>{d.dayName}<br /><span style={{ fontWeight: 400, fontSize: 'var(--text-xs)' }}>{d.date.slice(5)}</span></th>
                   ))}
                   <th style={{ color: 'var(--color-warning-700)' }}>T</th>
                   <th style={{ color: 'var(--color-primary-600)' }}>S{weekly.weekNumber}</th>
@@ -62,7 +70,7 @@ export const WeeklyTab: React.FC = () => {
                 <tr>
                   {weekly.days.map((d: any) => (
                     <td key={d.date} style={{ textAlign: 'center' }}>
-                      {d.records.length === 0 ? <span style={{ color: 'var(--color-neutral-300)' }}>—</span> : (
+                      {d.classes.length === 0 ? <span style={{ color: 'var(--color-neutral-300)' }}>—</span> : (
                         <span className={`badge ${d.hours > 0 ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 'var(--text-lg)', padding: '6px 12px' }}>
                           {d.hours > 0 ? d.hours : 'F'}
                         </span>
@@ -76,6 +84,42 @@ export const WeeklyTab: React.FC = () => {
             </table>
           </Card>
 
+          {/* Detalle de clases por día */}
+          <Card>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="card-title">Detalle de clases · Semana {weekly.weekNumber}</h3>
+              <div style={{ display: 'flex', gap: 6, fontSize: 'var(--text-xs)' }}>
+                <span className="badge badge-success">Asistió</span>
+                <span className="badge badge-danger">Faltó</span>
+                <span className="badge badge-warning">Tardanza</span>
+                <span className="badge badge-neutral">Sin registrar</span>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 12 }}>
+              {weekly.days.map((d: any) => (
+                <div key={d.date} style={{ border: '1px solid var(--color-neutral-200)', borderRadius: 10, padding: 10, background: d.absents > 0 ? 'var(--color-danger-50)' : 'var(--color-neutral-50)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 8 }}>
+                    {d.dayName} <span style={{ color: 'var(--color-neutral-400)', fontWeight: 400 }}>{d.date.slice(5)}</span>
+                  </div>
+                  {d.classes.length === 0 ? (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-400)' }}>Sin clases</div>
+                  ) : (
+                    d.classes.map((c: any, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, padding: '6px 0', borderBottom: '1px dashed var(--color-neutral-200)' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>{c.courseName}</div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)' }}>{c.sectionName} · {c.sedeName} · Slot {c.slot}</div>
+                        </div>
+                        <StatusBadge c={c} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Totales */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             <Card className="p-4"><div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-primary-600)' }}>{weekly.totals.hours}</div><div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)' }}>Horas dictadas</div></Card>
             <Card className="p-4"><div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success-500)' }}>{weekly.totals.presents}</div><div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)' }}>Asistencias</div></Card>

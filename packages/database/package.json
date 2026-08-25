@@ -8,9 +8,12 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
     "seed": "node seed.js",
     "seed:full": "node seed-full.js",
-    "studio": "prisma studio"
+    "seed:academic": "node seed-academic.js",
+    "seed:teachers": "node seed-teachers.js",
+    "seed:students": "node seed-students.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

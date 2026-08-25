@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "setup": "pnpm install && pnpm db:generate",
+    "check": "turbo run build",
     "api:dev": "pnpm --filter api run start:dev",
     "web:dev": "pnpm --filter web run dev",
     "db:up": "docker compose up -d",
@@ -15,11 +17,12 @@
     "db:build": "pnpm --filter @suite/database run build",
     "db:migrate": "pnpm --filter @suite/database run migrate",
     "db:deploy": "pnpm --filter @suite/database run deploy",
+    "db:studio": "pnpm --filter @suite/database run studio",
     "db:seed": "pnpm --filter @suite/database run seed",
     "db:seed:full": "pnpm --filter @suite/database run seed:full",
-    "db:studio": "pnpm --filter @suite/database run studio",
-    "setup": "pnpm install && pnpm db:generate",
-    "check": "turbo run build"
+    "db:seed:academic": "pnpm --filter @suite/database run seed:academic",
+    "db:seed:teachers": "pnpm --filter @suite/database run seed:teachers",
+    "db:seed:students": "pnpm --filter @suite/database run seed:students"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
