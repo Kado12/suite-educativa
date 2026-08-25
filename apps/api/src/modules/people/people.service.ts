@@ -260,6 +260,38 @@ export class PeopleService {
     return this.prisma.teacherProfile.update({ where: { id: teacherProfileId }, data });
   }
 
+  async deleteTeacher(profileId: string) {
+    const profile = await this.prisma.teacherProfile.findUnique({ where: { id: profileId }, include: { sessions: true } });
+    if (!profile) throw new NotFoundException('Perfil docente no encontrado');
+    if (profile.sessions.length > 0) {
+      throw new ConflictException('El docente tiene sesiones de horario asignadas. Limpia el horario antes de eliminarlo.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.teacherCourse.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherTurno.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherSede.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherSedeDay.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherUnavailableDay.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherSlotPref.deleteMany({ where: { teacherProfileId: profileId } });
+      await tx.teacherProfile.delete({ where: { id: profileId } });
+      return tx.person.delete({ where: { id: profile.personId } });
+    });
+  }
+
+  async setTeacherSedeDays(teacherProfileId: string, sedeId: string, days: number[]) {
+    const unique = Array.from(new Set(days));
+    return this.prisma.$transaction(async (tx) => {
+      await tx.teacherSedeDay.deleteMany({ where: { teacherProfileId, sedeId } });
+      if (unique.length > 0) {
+        await tx.teacherSedeDay.createMany({ data: unique.map((dayOfWeek) => ({ teacherProfileId, sedeId, dayOfWeek })) });
+      }
+      return tx.teacherProfile.findUnique({
+        where: { id: teacherProfileId },
+        include: { sedeDays: { include: { sede: true } }, sedes: { include: { sede: true } }, unavailableDays: true },
+      });
+    });
+  }
+
   async setTeacherCourses(teacherProfileId: string, courseIds: string[]) {
     return this.prisma.$transaction(async (tx) => {
       await tx.teacherCourse.deleteMany({ where: { teacherProfileId } });
@@ -273,36 +305,33 @@ export class PeopleService {
   }
 
   async setTeacherTurnos(teacherProfileId: string, turnoIds: string[]) {
+    const unique = Array.from(new Set(turnoIds));
     return this.prisma.$transaction(async (tx) => {
       await tx.teacherTurno.deleteMany({ where: { teacherProfileId } });
-      if (turnoIds.length > 0) {
-        await tx.teacherTurno.createMany({
-          data: turnoIds.map((turnoId) => ({ teacherProfileId, turnoId })),
-        });
+      if (unique.length > 0) {
+        await tx.teacherTurno.createMany({ data: unique.map((turnoId) => ({ teacherProfileId, turnoId })) });
       }
       return tx.teacherProfile.findUnique({ where: { id: teacherProfileId }, include: { turnos: { include: { turno: true } } } });
     });
   }
 
   async setTeacherSedes(teacherProfileId: string, sedeIds: string[]) {
+    const unique = Array.from(new Set(sedeIds));
     return this.prisma.$transaction(async (tx) => {
       await tx.teacherSede.deleteMany({ where: { teacherProfileId } });
-      if (sedeIds.length > 0) {
-        await tx.teacherSede.createMany({
-          data: sedeIds.map((sedeId) => ({ teacherProfileId, sedeId })),
-        });
+      if (unique.length > 0) {
+        await tx.teacherSede.createMany({ data: unique.map((sedeId) => ({ teacherProfileId, sedeId })) });
       }
       return tx.teacherProfile.findUnique({ where: { id: teacherProfileId }, include: { sedes: { include: { sede: true } } } });
     });
   }
 
   async setTeacherUnavailableDays(teacherProfileId: string, days: number[]) {
+    const unique = Array.from(new Set(days));
     return this.prisma.$transaction(async (tx) => {
       await tx.teacherUnavailableDay.deleteMany({ where: { teacherProfileId } });
-      if (days.length > 0) {
-        await tx.teacherUnavailableDay.createMany({
-          data: days.map((dayOfWeek) => ({ teacherProfileId, dayOfWeek })),
-        });
+      if (unique.length > 0) {
+        await tx.teacherUnavailableDay.createMany({ data: unique.map((dayOfWeek) => ({ teacherProfileId, dayOfWeek })) });
       }
       return tx.teacherProfile.findUnique({ where: { id: teacherProfileId }, include: { unavailableDays: true } });
     });

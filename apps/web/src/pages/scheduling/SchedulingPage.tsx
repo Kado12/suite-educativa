@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, TrashIcon, BuildingOffice2Icon, UserGroupIcon } from '@heroicons/react/24/outline';
-import { Card, Button, Select, Badge } from '@suite/ui';
+import { PlayIcon, TrashIcon, BuildingOffice2Icon, UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { Card, Button, Select, Badge, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../context/ToastContext';
 import { schedulingService } from '../../api/scheduling.service';
 import { academicService } from '../../api/academic.service';
+import { peopleService } from '../../api/people.service';
 
 const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
@@ -17,6 +18,19 @@ export const SchedulingPage: React.FC = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [view, setView] = useState<'section' | 'teacher'>('section');
   const [generating, setGenerating] = useState(false);
+
+  const [areas, setAreas] = useState<any[]>([]);
+  const [sedes, setSedes] = useState<any[]>([]);
+  const [turnos, setTurnos] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [exp, setExp] = useState({ sedeId: '', turnoId: '', areaId: '', teacherProfileId: '', sectionId: '' });
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([academicService.listAreas(), peopleService.listTeachers(), academicService.listSections(), academicService.listSedes(), academicService.listTurnos()])
+      .then(([a, t, s, se, tu]) => { setAreas(a); setTeachers(t); setSections(s); setSedes(se); setTurnos(tu) });
+  }, []);
 
   useEffect(() => {
     academicService.listPeriods().then((p) => {
@@ -56,6 +70,16 @@ export const SchedulingPage: React.FC = () => {
     if (!selectedBlock) return;
     try { await schedulingService.clear(selectedBlock); setSessions([]); setResult(null); success('Horario limpiado'); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
+  };
+
+  const handleExport = async () => {
+    if (!selectedBlock) { error('Selecciona un bloque'); return; }
+    setExporting(true);
+    try {
+      await schedulingService.exportExcel(selectedBlock, exp);
+      success('📥 Horario exportado');
+    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
+    finally { setExporting(false); }
   };
 
   // ===== Vista por sección =====
@@ -191,6 +215,24 @@ export const SchedulingPage: React.FC = () => {
           )}
         </div>
       </Card>
+          <Card style={{ marginBottom: 16 }}>
+            <h3 className="card-title" style={{ marginBottom: 12 }}>Exportar horario a Excel</h3>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <Select label="Sede" value={exp.sedeId} onChange={(e) => setExp({ ...exp, sedeId: e.target.value })}
+                options={[{ value: '', label: 'Todas' }, ...sedes.map((s: any) => ({ value: s.id, label: s.name }))]} style={{ minWidth: 160 }} />
+              <Select label="Turno" value={exp.turnoId} onChange={(e) => setExp({ ...exp, turnoId: e.target.value })}
+                options={[{ value: '', label: 'Todos' }, ...turnos.map((t: any) => ({ value: t.id, label: t.name }))]} style={{ minWidth: 160 }} />
+              <Select label="Área" value={exp.areaId} onChange={(e) => setExp({ ...exp, areaId: e.target.value })}
+                options={[{ value: '', label: 'Todas' }, ...areas.map((a: any) => ({ value: a.id, label: a.name }))]} style={{ minWidth: 160 }} />
+              <SearchableSelect label="Docente" value={exp.teacherProfileId} onChange={(v) => setExp({ ...exp, teacherProfileId: v })}
+                options={teachers.map((t: any) => ({ value: t.teacherProfile.id, label: `${t.lastName}, ${t.firstName}` }))} placeholder="Buscar docente..." />
+              <SearchableSelect label="Sección" value={exp.sectionId} onChange={(v) => setExp({ ...exp, sectionId: v })}
+                options={sections.map((s: any) => ({ value: s.id, label: s.name, hint: s.classroom?.sede?.name }))} placeholder="Buscar sección..." />
+              <Button variant="success" onClick={handleExport} isLoading={exporting} disabled={!selectedBlock}>
+                <ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar
+              </Button>
+            </div>
+          </Card>
 
       {result && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -220,11 +262,37 @@ export const SchedulingPage: React.FC = () => {
 
       {sessions.length > 0 && (
         <>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <button onClick={() => setView('section')} className={`btn ${view === 'section' ? 'btn-primary' : 'btn-secondary'}`}>
+          <div style={{
+            display: 'flex', gap: 4, marginBottom: 24,
+            background: 'var(--color-neutral-100)', padding: 4, borderRadius: 12,
+            border: '1px solid var(--color-neutral-200)',
+          }}>
+            <button 
+              onClick={() => setView('section')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 16px', borderRadius: 8,
+                fontSize: 'var(--text-sm)', fontWeight: 600,
+                transition: 'all 0.15s',
+                background: view === 'section' ? 'var(--color-neutral-0)' : 'transparent',
+                color: view === 'section' ? 'var(--color-primary-600)' : 'var(--color-neutral-600)',
+                boxShadow: view === 'section' ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
               <BuildingOffice2Icon style={{ width: 16, height: 16 }} /> Por sección
             </button>
-            <button onClick={() => setView('teacher')} className={`btn ${view === 'teacher' ? 'btn-primary' : 'btn-secondary'}`}>
+            <button
+              onClick={() => setView('teacher')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 16px', borderRadius: 8,
+                fontSize: 'var(--text-sm)', fontWeight: 600,
+                transition: 'all 0.15s',
+                background: view === 'teacher' ? 'var(--color-neutral-0)' : 'transparent',
+                color: view === 'teacher' ? 'var(--color-primary-600)' : 'var(--color-neutral-600)',
+                boxShadow: view === 'teacher' ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
               <UserGroupIcon style={{ width: 16, height: 16 }} /> Por docente
             </button>
           </div>

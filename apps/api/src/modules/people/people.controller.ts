@@ -51,4 +51,10 @@ export class PeopleController {
   setSedes(@Param('profileId') id: string, @Body('sedeIds') ids: string[]) { return this.svc.setTeacherSedes(id, ids || []); }
   @Put('teachers/:profileId/unavailable-days') @RequirePermissions('academic.manage') @Auditable('UPDATE_AVAILABILITYE', 'Docente - Disponibilidad')
   setUnavailable(@Param('profileId') id: string, @Body('days') days: number[]) { return this.svc.setTeacherUnavailableDays(id, days || []); }
+  @Delete('teachers/:profileId') @RequirePermissions('academic.manage') @Auditable('DELETE', 'Docente')
+  deleteTeacher(@Param('profileId') id: string) { return this.svc.deleteTeacher(id); }
+  @Put('teachers/:profileId/sede-days') @RequirePermissions('academic.manage') @Auditable('UPDATE_SEDE_DAYS', 'Docente - Disponibilidad - Sedes')
+  setSedeDays(@Param('profileId') id: string, @Body() b: { sedeId: string; days: number[] }) {
+    return this.svc.setTeacherSedeDays(id, b.sedeId, b.days || []);
+  }
 }

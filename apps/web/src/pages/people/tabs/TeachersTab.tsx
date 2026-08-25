@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, PencilIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { Card, Button, Input, Modal, Badge } from '@suite/ui';
+import { PlusIcon, PencilIcon, Cog6ToothIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Card, Button, Input, Modal, Badge, ConfirmModal, Select } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { peopleService } from '../../../api/people.service';
 import { academicService } from '../../../api/academic.service';
 
 export const TeachersTab: React.FC = () => {
   const { success, error } = useToast();
+  const [delTeacher, setDelTeacher] = useState<any | null>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -19,6 +20,7 @@ export const TeachersTab: React.FC = () => {
   const [turnos, setTurnos] = useState<any[]>([]);
   const [sedes, setSedes] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [sedeForDays, setSedeForDays] = useState('');
 
   const load = (s?: string) => peopleService.listTeachers(s).then(setTeachers).catch(() => error('Error'));
   useEffect(() => {
@@ -37,6 +39,13 @@ export const TeachersTab: React.FC = () => {
     setShowForm(true);
   };
 
+  const refreshConfig = async () => {
+    const list = await peopleService.listTeachers();
+    setTeachers(list);
+    const fresh = list.find((t: any) => t.teacherProfile.id === showConfig.teacherProfile.id);
+    if (fresh) setShowConfig(fresh);
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
@@ -51,37 +60,47 @@ export const TeachersTab: React.FC = () => {
     finally { setSaving(false); }
   };
 
+  const handleDeleteTeacher = async () => {
+    if (!delTeacher) return; setSaving(true);
+    try { await peopleService.deleteTeacher(delTeacher.teacherProfile.id); success('Docente eliminado'); setDelTeacher(null); load(search || undefined); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
+    finally { setSaving(false); }
+  };
+
   const openConfig = async (t: any) => {
     await loadRefs();
     setShowConfig(t);
   };
 
+  // CURSOS: el botón pasa "¿está presente ahora?" → si está, quitar; si no, agregar
   const toggleCourse = async (cid: string, present: boolean) => {
-    const profile = showConfig.teacherProfile;
-    const current = profile.courses.map((c: any) => c.course.id);
-    const next = present ? current.filter((x: string) => x !== cid) : [...current, cid];
-    try { await peopleService.setTeacherCourses(profile.id, next); await load(search || undefined); setShowConfig((prev: any) => prev ? { ...prev, teacherProfile: { ...prev.teacherProfile, courses: next.map((id: any) => ({ course: courses.find((c) => c.id === id) })) } } : null); }
+    const current = showConfig.teacherProfile.courses.map((c: any) => c.course.id);
+    const next = present ? current.filter((x: string) => x !== cid) : Array.from(new Set([...current, cid]));
+    try { await peopleService.setTeacherCourses(showConfig.teacherProfile.id, next); await refreshConfig(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
-  const toggleTurno = async (tid: string, present: boolean) => {
-    const profile = showConfig.teacherProfile;
-    const current = profile.turnos.map((t: any) => t.turno.id);
-    const next = present ? current.filter((x: string) => x !== tid) : [...current, tid];
-    try { await peopleService.setTeacherTurnos(profile.id, next); await load(search || undefined); loadRefs(); }
+
+  // TURNOS: el checkbox pasa "¿debe quedar marcado?" → si checked, agregar; si no, quitar
+  const toggleTurno = async (tid: string, checked: boolean) => {
+    const current = showConfig.teacherProfile.turnos.map((t: any) => t.turno.id);
+    const next = checked ? Array.from(new Set([...current, tid])) : current.filter((x: string) => x !== tid);
+    try { await peopleService.setTeacherTurnos(showConfig.teacherProfile.id, next); await refreshConfig(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
-  const toggleSede = async (sid: string, present: boolean) => {
-    const profile = showConfig.teacherProfile;
-    const current = profile.sedes.map((s: any) => s.sede.id);
-    const next = present ? current.filter((x: string) => x !== sid) : [...current, sid];
-    try { await peopleService.setTeacherSedes(profile.id, next); await load(search || undefined); loadRefs(); }
+
+  // SEDES: igual que turnos (checkbox)
+  const toggleSede = async (sid: string, checked: boolean) => {
+    const current = showConfig.teacherProfile.sedes.map((s: any) => s.sede.id);
+    const next = checked ? Array.from(new Set([...current, sid])) : current.filter((x: string) => x !== sid);
+    try { await peopleService.setTeacherSedes(showConfig.teacherProfile.id, next); await refreshConfig(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
+
+  // DÍAS: el botón pasa "¿está no-disponible ahora?" → si está, quitar; si no, agregar
   const toggleDay = async (day: number, present: boolean) => {
-    const profile = showConfig.teacherProfile;
-    const current = profile.unavailableDays.map((d: any) => d.dayOfWeek);
-    const next = present ? current.filter((x: number) => x !== day) : [...current, day];
-    try { await peopleService.setTeacherUnavailableDays(profile.id, next); await load(search || undefined); loadRefs(); }
+    const current = showConfig.teacherProfile.unavailableDays.map((d: any) => d.dayOfWeek);
+    const next = present ? current.filter((x: number) => x !== day) : Array.from(new Set([...current, day]));
+    try { await peopleService.setTeacherUnavailableDays(showConfig.teacherProfile.id, next); await refreshConfig(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
@@ -107,6 +126,9 @@ export const TeachersTab: React.FC = () => {
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => openConfig(t)} className="btn btn-ghost btn-sm" title="Configurar disponibilidad">
                     <Cog6ToothIcon style={{ width: 16, height: 16 }} />
+                  </button>
+                  <button onClick={() => setDelTeacher(t)} className="btn btn-ghost btn-sm" title="Eliminar docente">
+                    <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />
                   </button>
                 </div>
               </div>
@@ -188,20 +210,41 @@ export const TeachersTab: React.FC = () => {
                 </div>
               </div>
               <div>
-                <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 8 }}>🚫 Días no disponibles</h4>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[1, 2, 3, 4, 5].map((d) => (
-                    <button key={d} onClick={() => toggleDay(d, unavailDays.has(d))}
-                      className={`badge ${unavailDays.has(d) ? 'badge-danger' : 'badge-neutral'}`}>
-                      {unavailDays.has(d) ? '🚫' : '✓'} {DAY_NAMES[d]}
-                    </button>
-                  ))}
-                </div>
+                <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 8 }}>📅 Días disponibles por sede</h4>
+                <Select value={sedeForDays} onChange={(e) => setSedeForDays(e.target.value)}
+                  options={[{ value: '', label: 'Selecciona sede' }, ...sedes.map((s: any) => ({ value: s.id, label: s.name }))]} />
+                {sedeForDays && (() => {
+                  const current = new Set(
+                    p.sedeDays.filter((sd: any) => sd.sedeId === sedeForDays).map((sd: any) => sd.dayOfWeek),
+                  );
+                  return (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {[1, 2, 3, 4, 5].map((d) => (
+                        <button key={d}
+                          onClick={() => {
+                            const next = current.has(d)
+                              ? [1, 2, 3, 4, 5].filter((x) => x !== d)
+                              : [1, 2, 3, 4, 5].filter((x) => current.has(x) || x === d);
+                            peopleService.setTeacherSedeDays(p.id, sedeForDays, next).then(refreshConfig);
+                          }}
+                          className={`badge ${current.has(d) ? 'badge-success' : 'badge-neutral'}`}>
+                          {current.has(d) ? '✓' : '+'} {DAY_NAMES[d]}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 6 }}>
+                  Sin días marcados en una sede = disponible todos los días en esa sede.
+                </p>
               </div>
             </div>
           );
         })()}
       </Modal>
+      
+      <ConfirmModal isOpen={!!delTeacher} onClose={() => setDelTeacher(null)} onConfirm={handleDeleteTeacher}
+        title="Eliminar docente" message={`¿Eliminar a ${delTeacher?.firstName} ${delTeacher?.lastName}? Se eliminará su perfil y disponibilidad.`} isLoading={saving} />
     </div>
   );
 };

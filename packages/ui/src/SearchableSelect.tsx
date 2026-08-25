@@ -55,7 +55,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   };
 
   return (
-    <div style={{ position: 'relative' }} ref={containerRef}>
+    <div style={{ position: 'relative', minWidth: '200px' }} ref={containerRef}>
       {label && <label className="input-label">{label}{required && ' *'}</label>}
       <button
         type="button"
