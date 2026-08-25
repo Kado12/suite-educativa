@@ -15,4 +15,10 @@ export const uploadService = {
     fd.append('newPublicId', newPublicId);
     return api.post('/api/upload/replace-image', fd).then((r) => r.data);
   },
+
+  bulkStudentPhotos: (files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    return api.post('/api/upload/bulk-student-photos', fd).then((r) => r.data);
+  },
 };

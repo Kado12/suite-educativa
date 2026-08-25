@@ -1,10 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
+import { PrismaService } from '../../prisma/prisma.service';
+import * as path from 'path';
 
 @Injectable()
 export class UploadService {
-  constructor(private config: ConfigService) {
+  constructor(private config: ConfigService, private prisma: PrismaService) {
     cloudinary.config({
       cloud_name: this.config.get('CLOUDINARY_CLOUD_NAME'),
       api_key: this.config.get('CLOUDINARY_API_KEY'),
@@ -64,5 +66,20 @@ export class UploadService {
   async replaceImage(buffer: Buffer, mimetype: string, oldPublicId: string | null, newPublicId: string): Promise<string> {
     if (oldPublicId) await this.deleteImage(oldPublicId);
     return this.uploadImage(buffer, mimetype, newPublicId);
+  }
+
+  async bulkStudentPhotos(files: any[]): Promise<{ matched: number; unmatched: string[] }> {
+    let matched = 0;
+    const unmatched: string[] = [];
+    for (const file of files) {
+      const dni = path.parse(file.originalname).name.replace(/\D/g, '');
+      if (!dni) { unmatched.push(file.originalname); continue; }
+      const person = await this.prisma.person.findUnique({ where: { dni } });
+      if (!person) { unmatched.push(file.originalname); continue; }
+      const url = await this.uploadImage(file.buffer, file.mimetype, dni);
+      await this.prisma.person.update({ where: { id: person.id }, data: { photoUrl: url } });
+      matched++;
+    }
+    return { matched, unmatched };
   }
 }

@@ -6,6 +6,7 @@ import { peopleService } from '../../../api/people.service';
 import { EditPersonalModal } from '../modals/EditPersonalModal';
 import { EditAcademicModal } from '../modals/EditAcademicModal';
 import { pdfService } from '../../../api/pdf.service';
+import { uploadService } from '../../../api/upload.service';
 
 export const StudentsTab: React.FC = () => {
   const { success, error } = useToast();
@@ -20,6 +21,8 @@ export const StudentsTab: React.FC = () => {
 
   const [reloadKey, setReloadKey] = useState(0);
   const [fSede, setFSede] = useState(''); const [fTurno, setFTurno] = useState('');
+
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   // Modal eliminar
   const [del, setDel] = useState<any | null>(null);
@@ -66,6 +69,19 @@ export const StudentsTab: React.FC = () => {
     catch (err: any) { error(err.response?.data?.message || 'Error al exportar'); }
   };
 
+const handleBulkPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  setUploadingPhotos(true);
+  try {
+    const r = await uploadService.bulkStudentPhotos(files);
+    success(`✅ ${r.matched} fotos asignadas`);
+    if (r.unmatched.length > 0) error(`⚠️ ${r.unmatched.length} sin coincidencia de DNI`);
+    load();
+  } catch (err: any) { error(err.response?.data?.message || 'Error al subir fotos'); }
+  finally { setUploadingPhotos(false); e.target.value = ''; }
+};
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -83,6 +99,10 @@ export const StudentsTab: React.FC = () => {
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <Input placeholder="Buscar por nombre o documento..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
             <Button variant="success" onClick={handleExport}><ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar</Button>
+            <label className="btn btn-secondary" style={{ cursor: 'pointer', background: 'var(--color-accent-700)', color:'white' }}>
+              {uploadingPhotos ? 'Subiendo...' : <><PhotoIcon style={{ width: 16, height: 16 }} /> Subir fotos en bloque</>}
+              <input type="file" accept="image/*" multiple onChange={handleBulkPhotos} style={{ display: 'none' }} disabled={uploadingPhotos} />
+            </label>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
-import { Controller, Post, UseGuards, UseInterceptors, UploadedFile, Body } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Post, UseGuards, UseInterceptors, UploadedFile, Body, UploadedFiles } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -31,5 +31,13 @@ export class UploadController {
     if (!file) throw new Error('Sube un archivo');
     const url = await this.svc.replaceImage(file.buffer, file.mimetype, oldPublicId || null, newPublicId);
     return { url };
+  }
+
+  @Post('bulk-student-photos')
+  @UseInterceptors(FilesInterceptor('files'))
+  @ApiConsumes('multipart/form-data')
+  async bulkPhotos(@UploadedFiles() files: any[]) {
+    if (!files || files.length === 0) throw new Error('Sube al menos una imagen');
+    return this.svc.bulkStudentPhotos(files);
   }
 }
