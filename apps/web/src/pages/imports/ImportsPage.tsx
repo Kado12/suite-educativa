@@ -10,7 +10,7 @@ const TYPES = [
   { value: 'cursos', label: 'Cursos' },
   { value: 'turnos', label: 'Turnos' },
   { value: 'salones', label: 'Salones' },
-  { value: 'secciones', label: 'Secciones' },
+  { value: 'sections', label: 'Secciones' },
   { value: 'teachers', label: 'Docentes' },
   { value: 'alumnos', label: 'Alumnos (con matrícula)' },
   { value: 'horario', label: 'Horario (por bloque)' },
