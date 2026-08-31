@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, UseGuards, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, UseGuards, Query, Res, Patch, Body } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { SchedulingService } from './scheduling.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -31,6 +31,21 @@ export class SchedulingController {
     res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="horario.xlsx"' });
     res.send(b);
   }
+
+  @Get('validate/:blockId') @RequirePermissions('scheduling.view')
+  validate(@Param('blockId') b: string) { return this.svc.validate(b); }
+
+  @Get('sessions/:blockId') @RequirePermissions('scheduling.view')
+  listSessions(@Param('blockId') b: string) { return this.svc.listSessions(b); }
+
+  @Patch('sessions/:id') @RequirePermissions('scheduling.manage') @Auditable('UPDATE', 'Horario - Sesion')
+  updateSession(@Param('id') id: string, @Body() b: any) { return this.svc.updateSession(id, b); }
+
+  @Post('sessions') @RequirePermissions('scheduling.manage') @Auditable('CREATE', 'Horario - Sesion')
+  createSession(@Body() b: any) { return this.svc.createSession(b); }
+
+  @Delete('sessions/:id') @RequirePermissions('scheduling.manage') @Auditable('DELETE', 'Horario - Sesion')
+  deleteSession(@Param('id') id: string) { return this.svc.deleteSession(id); }
 
   @Delete('clear/:blockId') @RequirePermissions('scheduling.manage') @Auditable('CLEAR', 'Horario')
   clear(@Param('blockId') blockId: string) { return this.svc.clear(blockId); }

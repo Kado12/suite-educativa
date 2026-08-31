@@ -111,9 +111,10 @@ export class AttendanceService {
     // Validar que las sesiones pertenezcan al bloque activo
     const valid = await this.prisma.scheduleSession.findMany({
       where: { blockId: block.id, id: { in: records.map((r) => r.sessionId) } },
-      select: { id: true },
+      select: { id: true, teacherProfileId: true, courseId: true },
     });
     const validIds = new Set(valid.map((v) => v.id));
+    const byId = new Map(valid.map((v) => [v.id, v]));
     for (const r of records) {
       if (!validIds.has(r.sessionId)) {
         throw new BadRequestException('Una de las sesiones no corresponde al bloque activo');
@@ -122,11 +123,16 @@ export class AttendanceService {
 
     let saved = 0;
     for (const r of records) {
+      const sess = byId.get(r.sessionId);
       const late = r.status === AttendanceStatus.ABSENT ? 0 : (r.lateMinutes || 0);
       await this.prisma.attendanceRecord.upsert({
         where: { sessionId_date: { sessionId: r.sessionId, date } },
         update: { status: r.status, lateMinutes: late },
-        create: { sessionId: r.sessionId, date, status: r.status, lateMinutes: late },
+        create: { 
+          sessionId: r.sessionId, date, status: r.status, lateMinutes: late,
+          teacherProfileId: sess?.teacherProfileId || null,
+          courseId: sess?.courseId || null
+        },
       });
       saved++;
     }
@@ -141,42 +147,86 @@ export class AttendanceService {
     if (!period) throw new NotFoundException('Período no encontrado');
     if (weekNumber < 1 || weekNumber > period.weeks) throw new BadRequestException('Semana inválida');
 
-    const block = await this.getBlockForWeek(periodId, weekNumber);
     const weekStart = addDays(period.startDate, (weekNumber - 1) * 7);
     const days: Date[] = [];
     for (let i = 0; i < 5; i++) days.push(addDays(weekStart, i));
+    const weekEnd = days[4];
 
-    const sessions = await this.prisma.scheduleSession.findMany({
-      where: { teacherProfileId, ...(block ? { blockId: block.id } : {}) },
+    // ¿Es la semana en curso? (para mostrar clases aún sin registrar)
+    const now = new Date();
+    const currentWeek = now >= period.startDate
+      ? Math.floor((now.getTime() - period.startDate.getTime()) / (7 * 86400000)) + 1
+      : 0;
+    const isCurrentWeek = weekNumber === currentWeek;
+
+    // ===== 1) Asistencias de la semana, por SNAPSHOT del docente =====
+        const records = await this.prisma.attendanceRecord.findMany({
+      where: {
+        date: { gte: days[0], lte: weekEnd },
+        session: { block: { periodId } },
+        OR: [
+          { teacherProfileId },
+          { teacherProfileId: null, session: { teacherProfileId } },
+        ],
+      },
       include: {
-        section: { include: { classroom: { include: { sede: true } }, turno: true } },
         course: true,
-        attendances: { where: { date: { gte: days[0], lte: days[4] } } },
+        session: {
+          include: {
+            section: { include: { classroom: { include: { sede: true } } }, turno: true },
+            course: true,
+          },
+        },
       },
     });
 
-    const dayRows = days.map((d, i) => {
-      const daySessions = sessions.filter((s) => s.dayOfWeek === i + 1);
-      // Todas las clases programadas del día, con su asistencia (o null si no se registró)
-      const classes = daySessions.map((s) => {
-        const att = s.attendances.find((a) => formatDate(a.date) === formatDate(d));
-        return {
-          courseName: s.course.name,
-          sectionName: s.section.name,
-          sedeName: s.section.classroom.sede.name,
-          slot: s.slot,
-          status: att ? att.status : null,
-          lateMinutes: att ? att.lateMinutes : 0,
-        };
+    // ===== 2) Sesiones actuales (solo para la semana en curso, clases sin registrar) =====
+    let currentSessions: any[] = [];
+    if (isCurrentWeek) {
+      currentSessions = await this.prisma.scheduleSession.findMany({
+        where: { teacherProfileId },
+        include: {
+          section: { include: { classroom: { include: { sede: true } } }, turno: true },
+          course: true,
+        },
       });
+    }
+
+    const dayRows = days.map((d, i) => {
+      const dow = i + 1;
+      const dayRecords = records.filter((r) => new Date(r.date).getUTCDay() === dow);
+
+      // Clases reales dictadas (histórico)
+      let classes: any[] = dayRecords.map((r) => ({
+        courseName: (r.course ?? r.session.course).name,
+        sectionName: r.session.section.name,
+        sedeName: r.session.section.classroom.sede.name,
+        slot: r.session.slot,
+        status: r.status,
+        lateMinutes: r.lateMinutes,
+      }));
+
+      // En la semana en curso, agrega clases programadas aún sin registrar
+      if (isCurrentWeek) {
+        const unrecorded = currentSessions.filter(
+          (s) => s.dayOfWeek === dow && !dayRecords.some((r) => r.sessionId === s.id),
+        );
+        classes = [
+          ...classes,
+          ...unrecorded.map((s) => ({
+            courseName: s.course.name, sectionName: s.section.name,
+            sedeName: s.section.classroom.sede.name, slot: s.slot, status: null, lateMinutes: 0,
+          })),
+        ];
+      }
 
       const presents = classes.filter((c) => c.status === 'PRESENT');
       const absents = classes.filter((c) => c.status === 'ABSENT');
       return {
         date: formatDate(d),
-        dayName: DAY_NAMES[i + 1],
+        dayName: DAY_NAMES[dow],
         hours: presents.length * SESSION_HOURS,
-        lateMinutes: presents.reduce((sum, c) => sum + (c.lateMinutes || 0), 0),
+        lateMinutes: presents.reduce((s, c) => s + (c.lateMinutes || 0), 0),
         presents: presents.length,
         absents: absents.length,
         classes,
@@ -193,6 +243,6 @@ export class AttendanceService {
       { hours: 0, lateMinutes: 0, presents: 0, absents: 0 },
     );
 
-    return { weekNumber, periodName: period.name, blockName: block?.name || '—', days: dayRows, totals };
+    return { weekNumber, periodName: period.name, days: dayRows, totals };
   }
 }

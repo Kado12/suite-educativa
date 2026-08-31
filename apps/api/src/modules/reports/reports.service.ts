@@ -60,13 +60,14 @@ export class ReportsService {
         session: {
           block: { periodId: params.periodId },
           ...(params.blockId ? { blockId: params.blockId } : {}),
-          ...(params.teacherProfileId ? { teacherProfileId: params.teacherProfileId } : {}),
           ...(params.sedeId ? { section: { classroom: { sedeId: params.sedeId } } } : {}),
-          ...(params.courseId ? { courseId: params.courseId } : {}),
-          ...(params.areaId ? { course: { areaId: params.areaId } } : {}),
         },
       },
       include: {
+        // ===== SNAPSHOT (quién dictó realmente ese día) =====
+        teacherProfile: { include: { person: true } },
+        course: { include: { area: true } },
+        // ===== Sesión (para sede y fallback) =====
         session: {
           include: {
             course: { include: { area: true } },
@@ -79,23 +80,38 @@ export class ReportsService {
 
     const map = new Map<string, ConsolidatedRow>();
     for (const r of records) {
+      // ===== CLAVE: usar el snapshot, con fallback a la sesión =====
+      const teacher = r.teacherProfile ?? r.session.teacherProfile;
+      const course = r.course ?? r.session.course;
       const s = r.session;
-      let key: string, label: string, dni: string, area: string, course: string;
+      if (!teacher || !course) continue;
+
+      let key: string, label: string, dni: string, area: string, courseName: string;
       switch (params.groupBy) {
         case 'teacher':
-          key = `${s.teacherProfileId}::${s.courseId}`;
-          label = `${s.teacherProfile.person.lastName}, ${s.teacherProfile.person.firstName}`;
-          dni = s.teacherProfile.person.dni || undefined;
-          course = s.course.name;
+          key = `${teacher.id}::${course.id}`;
+          label = `${teacher.person.lastName}, ${teacher.person.firstName}`;
+          dni = teacher.person.dni || undefined;
+          courseName = course.name;
           break;
         case 'course':
-          key = s.courseId; label = s.course.name; area = s.course.area.name; break;
+          key = course.id;
+          label = course.name;
+          area = course.area?.name;
+          break;
         case 'sede':
-          key = s.section.classroom.sedeId; label = s.section.classroom.sede.name; break;
+          key = s.section.classroom.sedeId;
+          label = s.section.classroom.sede.name;
+          break;
         case 'area':
-          key = s.course.areaId; label = s.course.area.name; break;
+          key = course.areaId;
+          label = course.area?.name;
+          break;
       }
-      if (!map.has(key)) map.set(key, { key, label, dni, area, course, hours: 0, presents: 0, absents: 0, lateMinutes: 0, attendanceRate: 0 });
+
+      if (!map.has(key)) {
+        map.set(key, { key, label, dni, area, course: courseName, hours: 0, presents: 0, absents: 0, lateMinutes: 0, attendanceRate: 0 });
+      }
       const row = map.get(key)!;
       if (r.status === 'PRESENT') { row.presents++; row.hours += SESSION_HOURS; row.lateMinutes += r.lateMinutes; }
       else row.absents++;

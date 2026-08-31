@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, TrashIcon, BuildingOffice2Icon, UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, TrashIcon, BuildingOffice2Icon, UserGroupIcon, ArrowDownTrayIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Select, Badge, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../context/ToastContext';
 import { schedulingService } from '../../api/scheduling.service';
 import { academicService } from '../../api/academic.service';
 import { peopleService } from '../../api/people.service';
+import { ScheduleEditor } from './ScheduleEditor';
 
 const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
@@ -16,7 +17,7 @@ export const SchedulingPage: React.FC = () => {
   const [selectedBlock, setSelectedBlock] = useState('');
   const [result, setResult] = useState<any | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [view, setView] = useState<'section' | 'teacher'>('section');
+  const [view, setView] = useState<'section' | 'teacher' | 'editor'>('section');
   const [generating, setGenerating] = useState(false);
 
   const [areas, setAreas] = useState<any[]>([]);
@@ -26,6 +27,11 @@ export const SchedulingPage: React.FC = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [exp, setExp] = useState({ sedeId: '', turnoId: '', areaId: '', teacherProfileId: '', sectionId: '' });
   const [exporting, setExporting] = useState(false);
+
+  const [validation, setValidation] = useState<any | null>(null);
+  const [validating, setValidating] = useState(false);
+
+  const currentBlock = blocks.find((b) => b.id === selectedBlock);
 
   useEffect(() => {
     Promise.all([academicService.listAreas(), peopleService.listTeachers(), academicService.listSections(), academicService.listSedes(), academicService.listTurnos()])
@@ -80,6 +86,14 @@ export const SchedulingPage: React.FC = () => {
       success('📥 Horario exportado');
     } catch (err: any) { error(err.response?.data?.message || 'Error'); }
     finally { setExporting(false); }
+  };
+
+  const handleValidate = async () => {
+    if (!selectedBlock) { error('Selecciona un bloque'); return; }
+    setValidating(true);
+    try { setValidation(await schedulingService.validate(selectedBlock)); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
+    finally { setValidating(false); }
   };
 
   // ===== Vista por sección =====
@@ -213,6 +227,9 @@ export const SchedulingPage: React.FC = () => {
           {selectedBlock && (
             <Button variant="danger" onClick={handleClear}><TrashIcon style={{ width: 16, height: 16 }} /> Limpiar</Button>
           )}
+          <Button variant="secondary" onClick={handleValidate} isLoading={validating} disabled={!selectedBlock}>
+            <ShieldCheckIcon style={{ width: 16, height: 16 }} /> Validar
+          </Button>
         </div>
       </Card>
           <Card style={{ marginBottom: 16 }}>
@@ -260,6 +277,20 @@ export const SchedulingPage: React.FC = () => {
         </Card>
       )}
 
+      {validation && (
+        <Card style={{ marginBottom: 16, borderColor: validation.conflicts.length ? 'var(--color-danger-500)' : 'var(--color-success-500)' }}>
+          <h3 className="card-title" style={{ color: validation.conflicts.length ? 'var(--color-danger-700)' : 'var(--color-success-700)' }}>
+            {validation.conflicts.length ? `❌ ${validation.conflicts.length} cruce(s) detectados` : '✅ Sin cruces'} · {validation.totalSessions} sesiones
+          </h3>
+          {validation.conflicts.map((c: any, i: number) => (
+            <div key={i} style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger-700)', marginTop: 6 }}>⛔ {c.message}</div>
+          ))}
+          {validation.warnings.map((w: any, i: number) => (
+            <div key={i} style={{ fontSize: 'var(--text-sm)', color: 'var(--color-warning-700)', marginTop: 6 }}>⚠️ {w.message}</div>
+          ))}
+        </Card>
+      )}
+
       {sessions.length > 0 && (
         <>
           <div style={{
@@ -295,8 +326,23 @@ export const SchedulingPage: React.FC = () => {
             >
               <UserGroupIcon style={{ width: 16, height: 16 }} /> Por docente
             </button>
+            <button
+              onClick={() => setView('editor')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 16px', borderRadius: 8,
+                fontSize: 'var(--text-sm)', fontWeight: 600,
+                transition: 'all 0.15s',
+                background: view === 'editor' ? 'var(--color-neutral-0)' : 'transparent',
+                color: view === 'editor' ? 'var(--color-primary-600)' : 'var(--color-neutral-600)',
+                boxShadow: view === 'editor' ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
+              <UserGroupIcon style={{ width: 16, height: 16 }} /> Editor de sesiones
+            </button>
           </div>
           {view === 'section' ? renderBySection() : renderByTeacher()}
+          {view === 'editor' && currentBlock && <ScheduleEditor block={currentBlock} />}
         </>
       )}
     </div>

@@ -192,6 +192,7 @@ model Course {
   blockCourses   BlockCourse[]
   teacherCourses TeacherCourse[]
   sessions       ScheduleSession[]
+  attendanceRecords AttendanceRecord[]
 
   @@map("courses")
 }
@@ -228,6 +229,7 @@ model TeacherProfile {
   unavailableDays TeacherUnavailableDay[]
   sessions        ScheduleSession[]
   validations     WeekValidation[]
+  attendanceRecords AttendanceRecord[]
 
   @@map("teacher_profiles")
 }
@@ -379,14 +381,18 @@ model ScheduleSession {
 // ==================== ASISTENCIA ====================
 
 model AttendanceRecord {
-  id          String           @id @default(cuid())
-  sessionId   String
-  date        DateTime         @db.Date
-  status      AttendanceStatus
-  lateMinutes Int              @default(0)
-  notes       String?
+  id               String           @id @default(cuid())
+  sessionId        String
+  teacherProfileId String?          // ← snapshot del docente que dictó
+  courseId         String?          // ← snapshot del curso
+  date             DateTime         @db.Date
+  status           AttendanceStatus
+  lateMinutes      Int              @default(0)
+  notes            String?
 
-  session ScheduleSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session        ScheduleSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  teacherProfile TeacherProfile?  @relation(fields: [teacherProfileId], references: [id], onDelete: SetNull)
+  course         Course?          @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, date])
   @@map("attendance_records")

@@ -46,7 +46,7 @@ export class ValidationsService {
 
     const byTeacher = new Map<string, { hours: number; presents: number; absents: number; lateMinutes: number }>();
     for (const r of records) {
-      const id = r.session.teacherProfileId;
+      const id = r.teacherProfileId || r.session.teacherProfileId;
       if (!byTeacher.has(id)) byTeacher.set(id, { hours: 0, presents: 0, absents: 0, lateMinutes: 0 });
       const g = byTeacher.get(id)!;
       if (r.status === 'PRESENT') { g.presents++; g.hours += 3; g.lateMinutes += r.lateMinutes; }
