@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `schedule_sessions` ADD COLUMN `createAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3);

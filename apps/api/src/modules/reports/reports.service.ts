@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
 
-export type GroupBy = 'teacher' | 'course' | 'sede' | 'area';
+export type GroupBy = 'teacher' | 'course' | 'sede' | 'area' | 'sedeCourse';
 export type ReportMode = 'week' | 'month' | 'period' | 'block';
 
 export interface ConsolidatedParams {
@@ -64,10 +64,8 @@ export class ReportsService {
         },
       },
       include: {
-        // ===== SNAPSHOT (quién dictó realmente ese día) =====
         teacherProfile: { include: { person: true } },
         course: { include: { area: true } },
-        // ===== Sesión (para sede y fallback) =====
         session: {
           include: {
             course: { include: { area: true } },
@@ -78,9 +76,19 @@ export class ReportsService {
       },
     });
 
+    // ===== Filtros en memoria (snapshot-aware) =====
+    const filtered = records.filter((r) => {
+      const teacherId = r.teacherProfileId ?? r.session.teacherProfileId;
+      const courseId = r.courseId ?? r.session.courseId;
+      const areaId = (r.course ?? r.session.course).areaId;
+      if (params.teacherProfileId && teacherId !== params.teacherProfileId) return false;
+      if (params.courseId && courseId !== params.courseId) return false;
+      if (params.areaId && areaId !== params.areaId) return false;
+      return true;
+    });
+
     const map = new Map<string, ConsolidatedRow>();
-    for (const r of records) {
-      // ===== CLAVE: usar el snapshot, con fallback a la sesión =====
+    for (const r of filtered) {
       const teacher = r.teacherProfile ?? r.session.teacherProfile;
       const course = r.course ?? r.session.course;
       const s = r.session;
@@ -95,23 +103,20 @@ export class ReportsService {
           courseName = course.name;
           break;
         case 'course':
-          key = course.id;
-          label = course.name;
-          area = course.area?.name;
-          break;
+          key = course.id; label = course.name; area = course.area?.name; break;
         case 'sede':
-          key = s.section.classroom.sedeId;
-          label = s.section.classroom.sede.name;
-          break;
+          key = s.section.classroom.sedeId; label = s.section.classroom.sede.name; break;
         case 'area':
-          key = course.areaId;
-          label = course.area?.name;
+          key = course.areaId; label = course.area?.name; break;
+        case 'sedeCourse':
+          key = `${s.section.classroom.sedeId}::${course.id}`;
+          label = `${s.section.classroom.sede.name} — ${course.name}`;
+          area = course.area?.name;
+          courseName = course.name;
           break;
       }
 
-      if (!map.has(key)) {
-        map.set(key, { key, label, dni, area, course: courseName, hours: 0, presents: 0, absents: 0, lateMinutes: 0, attendanceRate: 0 });
-      }
+      if (!map.has(key)) map.set(key, { key, label, dni, area, course: courseName, hours: 0, presents: 0, absents: 0, lateMinutes: 0, attendanceRate: 0 });
       const row = map.get(key)!;
       if (r.status === 'PRESENT') { row.presents++; row.hours += SESSION_HOURS; row.lateMinutes += r.lateMinutes; }
       else row.absents++;
@@ -174,6 +179,46 @@ export class ReportsService {
     tr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
 
     ws.eachRow((row, n) => { if (n < 3) return; row.eachCell((c) => { c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; }); });
+
+    const sedes = await this.prisma.sede.findMany({ orderBy: { name: 'asc' } });
+    for (const sede of sedes) {
+      const sedeRows = await this.getConsolidated({ ...params, sedeId: sede.id, groupBy: 'teacher' });
+      if (sedeRows.length === 0) continue;
+
+      const sws = wb.addWorksheet(sede.name.slice(0, 31), { views: [{ state: 'frozen', ySplit: 3 }] });
+      sws.columns = [
+        { key: 'label', width: 26 }, { key: 'dni', width: 12 }, { key: 'course', width: 24 },
+        { key: 'hours', width: 8 }, { key: 'presents', width: 10 }, { key: 'absents', width: 8 },
+        { key: 'lateMinutes', width: 12 }, { key: 'attendanceRate', width: 10 },
+      ];
+
+      sws.mergeCells(1, 1, 1, 8);
+      const t2 = sws.getCell('A1'); t2.value = `SEDE: ${sede.name.toUpperCase()}`; t2.font = { bold: true, size: 13 }; t2.alignment = { horizontal: 'center' };
+      sws.mergeCells(2, 1, 2, 8);
+      const t3 = sws.getCell('A2'); t3.value = `Período ${period.name} | ${modeLabel} | ${formatDate(start)} al ${formatDate(end)}`; t3.font = { size: 10, color: { argb: 'FF6B7280' } }; t3.alignment = { horizontal: 'center' };
+
+      const shr = sws.getRow(3);
+      ['Docente', 'DNI', 'Curso', 'Horas', 'Asist.', 'Faltas', 'Tard.', '% Asist.'].forEach((l, i) => {
+        const c = shr.getCell(i + 1); c.value = l;
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+      });
+      shr.height = 20;
+
+      sedeRows.forEach((row) => {
+        const r = sws.addRow(row);
+        const rate = r.getCell('attendanceRate');
+        rate.numFmt = '0"%"';
+        if (row.attendanceRate >= 90) rate.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+        else if (row.attendanceRate >= 70) rate.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+        else rate.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+      });
+
+      const stot = sedeRows.reduce((a, r) => ({ hours: a.hours + r.hours, presents: a.presents + r.presents, absents: a.absents + r.absents, lateMinutes: a.lateMinutes + r.lateMinutes }), { hours: 0, presents: 0, absents: 0, lateMinutes: 0 });
+      const str = sws.addRow({ label: 'TOTAL', ...stot });
+      str.font = { bold: true };
+      str.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+    }
 
     const buffer = await wb.xlsx.writeBuffer();
     return Buffer.from(buffer);

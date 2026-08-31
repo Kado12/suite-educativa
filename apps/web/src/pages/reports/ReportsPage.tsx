@@ -54,7 +54,7 @@ export const ReportsPage: React.FC = () => {
   };
 
   const totals = rows.reduce((a, r) => ({ hours: a.hours + r.hours, presents: a.presents + r.presents, absents: a.absents + r.absents, lateMinutes: a.lateMinutes + r.lateMinutes }), { hours: 0, presents: 0, absents: 0, lateMinutes: 0 });
-  const GROUP_LABELS: Record<string, string> = { teacher: 'Docente', course: 'Curso', sede: 'Sede', area: 'Área' };
+  const GROUP_LABELS: Record<string, string> = { teacher: 'Docente', course: 'Curso', sede: 'Sede', area: 'Área', sedeCourse: 'Sede + Curso' };
   const groupLabel = GROUP_LABELS[params.groupBy] || 'Docente'; 
 
   return (
@@ -86,7 +86,14 @@ export const ReportsPage: React.FC = () => {
               options={[{ value: '', label: 'Todos' }, ...blocks.map((b) => ({ value: b.id, label: b.name }))]} />
           )}
           <Select label="Agrupar por" value={params.groupBy} onChange={(e) => setParam('groupBy', e.target.value)}
-            options={[{ value: 'teacher', label: '👨‍ Docente' }, { value: 'course', label: '📘 Curso' }, { value: 'sede', label: '🏫 Sede' }, { value: 'area', label: '📚 Área' }]} />
+            options={[
+              { value: 'teacher', label: '👨 Docente' },
+              { value: 'course', label: '📘 Curso' },
+              { value: 'sede', label: '🏫 Sede' },
+              { value: 'area', label: '📚 Área' },
+              { value: 'sedeCourse', label: '🏫 Sede + Curso' },
+            ]}
+          />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginTop: 12 }}>
           <Select label="Filtrar sede" value={params.sedeId} onChange={(e) => setParam('sedeId', e.target.value)} options={[{ value: '', label: 'Todas' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]} />
@@ -106,6 +113,8 @@ export const ReportsPage: React.FC = () => {
                   <th>{groupLabel}</th>
                   {params.groupBy === 'teacher' && <><th>DNI</th><th>Curso</th></>}
                   {params.groupBy === 'course' && <th>Área</th>}
+                  {params.groupBy === 'course' && <th>Área</th>}
+                  {params.groupBy === 'sedeCourse' && <th>Área</th>}
                   <th>Horas</th><th>Asist.</th><th>Faltas</th><th>Tard.</th><th>% Asist.</th>
                 </tr>
               </thead>
@@ -115,6 +124,8 @@ export const ReportsPage: React.FC = () => {
                     <td><strong>{r.label}</strong></td>
                     {params.groupBy === 'teacher' && <><td>{r.dni}</td><td>{r.course}</td></>}
                     {params.groupBy === 'course' && <td>{r.area}</td>}
+                    {params.groupBy === 'course' && <td>{r.area}</td>}
+                    {params.groupBy === 'sedeCourse' && <td>{r.area}</td>}
                     <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-primary-600)' }}>{r.hours}</td>
                     <td style={{ textAlign: 'center', color: 'var(--color-success-700)' }}>{r.presents}</td>
                     <td style={{ textAlign: 'center', color: 'var(--color-danger-700)' }}>{r.absents}</td>

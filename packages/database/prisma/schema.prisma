@@ -365,6 +365,7 @@ model ScheduleSession {
   blockId          String
   dayOfWeek        Int
   slot             Int
+  createdAt         DateTime @default(now())
 
   section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)

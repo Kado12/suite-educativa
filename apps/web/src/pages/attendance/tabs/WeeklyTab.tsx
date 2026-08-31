@@ -71,8 +71,8 @@ export const WeeklyTab: React.FC = () => {
                   {weekly.days.map((d: any) => (
                     <td key={d.date} style={{ textAlign: 'center' }}>
                       {d.classes.length === 0 ? <span style={{ color: 'var(--color-neutral-300)' }}>—</span> : (
-                        <span className={`badge ${d.hours > 0 ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 'var(--text-lg)', padding: '6px 12px' }}>
-                          {d.hours > 0 ? d.hours : 'F'}
+                        <span className={`badge ${d.hours > 0 ? 'badge-success' : d.isFuture ? 'badge-neutral' : 'badge-danger'}`} style={{ fontSize: 'var(--text-lg)', padding: '6px 12px' }}>
+                          {d.hours > 0 ? d.hours : d.isFuture ? '—' : 'F'}
                         </span>
                       )}
                     </td>
