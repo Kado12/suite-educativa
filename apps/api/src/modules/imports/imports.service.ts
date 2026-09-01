@@ -5,7 +5,6 @@ import * as ExcelJS from 'exceljs';
 export interface ImportResult { created: number; skipped: number; errors: { row: number; reason: string }[]; }
 
 export const IMPORT_TEMPLATES: Record<string, { headers: string[]; example: string[] }> = {
-  teachers: { headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email'], example: ['Juan', 'Pérez García', '12345678', '999999999', 'juan@mail.com'] },
   students: { headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email'], example: ['Ana', 'Torres', '44444444', '999999999', 'ana@mail.com'] },
   sections: { headers: ['Sede', 'Salon', 'Turno', 'NombreSeccion'], example: ['Sede Central', 'A11', 'Mañana', ''] },
   sedes: { headers: ['Nombre'], example: ['Sede Central'] },
@@ -13,7 +12,14 @@ export const IMPORT_TEMPLATES: Record<string, { headers: string[]; example: stri
   cursos: { headers: ['Nombre', 'Area'], example: ['Álgebra', 'Matemáticas'] },
   turnos: { headers: ['Nombre', 'Slot1Inicio', 'Slot1Fin', 'Slot2Inicio', 'Slot2Fin'], example: ['Mañana', '08:00', '11:00', '11:00', '14:00'] },
   salones: { headers: ['Sede', 'Salon'], example: ['Sede Central', 'A11'] },
-  alumnos: { headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email', 'Sede', 'Turno', 'Seccion', 'Periodo', 'Plan', 'PrimerPago'], example: ['Ana', 'Torres', '90000001', '999999999', '', 'Sede Central', 'Mañana', 'A11 - M', 'Semestre 2026-II', 'Mensual regular', 'SI'] },
+  teachers: {
+    headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email', 'Cursos', 'Turnos', 'Sedes', 'Prioridad', 'AñosExp', 'MaxSesiones', 'MaxSecciones'],
+    example: ['Juan', 'Pérez', '11111111', '999999999', '', 'Álgebra; Geometría', 'Mañana; Tarde', 'Sede Central; Sede Norte', '8', '10', '20', '5'],
+  },
+  alumnos: {
+    headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email', 'Sede', 'Turno', 'Seccion', 'Periodo', 'Plan', 'PrimerPago', 'FechaInscripcion'],
+    example: ['Ana', 'Torres', '90000001', '999999999', '', 'Sede Central', 'Mañana', 'A11 - M', 'Semestre 2026-II', 'Mensual regular', 'SI', '2026-07-15'],
+  },
   horario: { headers: ['Seccion', 'Dia', 'Slot', 'Curso', 'DocenteDNI'], example: ['A11 - M', 'Lunes', '1', 'Álgebra', '11111111'] },
 };
 
@@ -56,6 +62,90 @@ export class ImportsService {
       if (values.some((v) => v !== '')) rows.push(values);
     });
     return rows;
+  }
+
+  private splitList(v?: string): string[] {
+    return (v || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+  }
+
+  private parseDateLoose(v?: string): Date | null {
+    if (!v) return null;
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  }
+
+  async importTeachers(buffer: Buffer): Promise<ImportResult> {
+    const rows = await this.parseRows(buffer);
+    const r: ImportResult = { created: 0, skipped: 0, errors: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const [firstName, lastName, dni, phone, email, cursosStr, turnosStr, sedesStr, prioStr, yrsStr, maxSesStr, maxSecStr] = rows[i];
+      if (!firstName || !lastName || !dni) { r.errors.push({ row: i + 2, reason: 'Nombres, Apellidos y DNI obligatorios' }); continue; }
+
+      const person = await this.prisma.person.upsert({
+        where: { dni },
+        update: { firstName, lastName, phone: phone || null, email: email || null },
+        create: { firstName, lastName, dni, phone: phone || null, email: email || null },
+      });
+
+      const profile = await this.prisma.teacherProfile.upsert({
+        where: { personId: person.id },
+        update: {
+          ...(prioStr ? { priority: parseInt(prioStr) } : {}),
+          ...(yrsStr ? { yearsExperience: parseInt(yrsStr) } : {}),
+          ...(maxSesStr ? { maxSessionsPerWeek: parseInt(maxSesStr) } : {}),
+          ...(maxSecStr ? { maxSections: parseInt(maxSecStr) } : {}),
+        },
+        create: {
+          personId: person.id,
+          priority: parseInt(prioStr) || 5,
+          yearsExperience: parseInt(yrsStr) || 0,
+          maxSessionsPerWeek: parseInt(maxSesStr) || 20,
+          maxSections: parseInt(maxSecStr) || 5,
+        },
+      });
+
+      // Cursos que puede dictar (se reemplazan si se listan)
+      const courseNames = this.splitList(cursosStr);
+      if (courseNames.length) {
+        await this.prisma.teacherCourse.deleteMany({ where: { teacherProfileId: profile.id } });
+        for (const cn of courseNames) {
+          const course = await this.prisma.course.findFirst({ where: { name: cn } });
+          if (!course) { r.errors.push({ row: i + 2, reason: `Curso no encontrado: ${cn}` }); continue; }
+          await this.prisma.teacherCourse.create({ data: { teacherProfileId: profile.id, courseId: course.id } });
+        }
+      }
+
+      // Turnos
+      const turnoNames = this.splitList(turnosStr);
+      if (turnoNames.length) {
+        await this.prisma.teacherTurno.deleteMany({ where: { teacherProfileId: profile.id } });
+        for (const tn of turnoNames) {
+          const turno = await this.prisma.turno.findFirst({ where: { name: tn } });
+          if (!turno) { r.errors.push({ row: i + 2, reason: `Turno no encontrado: ${tn}` }); continue; }
+          await this.prisma.teacherTurno.create({ data: { teacherProfileId: profile.id, turnoId: turno.id } });
+        }
+      }
+
+      // Sedes
+      const sedeNames = this.splitList(sedesStr);
+      if (sedeNames.length) {
+        await this.prisma.teacherSede.deleteMany({ where: { teacherProfileId: profile.id } });
+        for (const sn of sedeNames) {
+          const sede = await this.prisma.sede.findFirst({ where: { name: sn } });
+          if (!sede) { r.errors.push({ row: i + 2, reason: `Sede no encontrada: ${sn}` }); continue; }
+          await this.prisma.teacherSede.create({ data: { teacherProfileId: profile.id, sedeId: sede.id } });
+        }
+      }
+
+      r.created++;
+    }
+    return r;
   }
 
   private async importPeople(buffer: Buffer, isTeacher: boolean): Promise<ImportResult> {
@@ -114,7 +204,6 @@ export class ImportsService {
   }
 
   async importFile(type: string, buffer: Buffer, blockId?: string): Promise<ImportResult> {
-    if (type === 'teachers') return this.importPeople(buffer, true);
     if (type === 'students') return this.importPeople(buffer, false);
     if (type === 'sections') return this.importSections(buffer);
     if (type === 'sedes') return this.importSedes(buffer);
@@ -123,6 +212,7 @@ export class ImportsService {
     if (type === 'turnos') return this.importTurnos(buffer);
     if (type === 'salones') return this.importSalones(buffer);
     if (type === 'alumnos') return this.importStudents(buffer);
+    if (type === 'teachers') return this.importTeachers(buffer);
     if (type === 'horario') return this.importSchedule(buffer, blockId!);
     throw new BadRequestException('Tipo no válido');
   }
@@ -200,14 +290,17 @@ export class ImportsService {
     const rows = await this.parseRows(buffer);
     const r: ImportResult = { created: 0, skipped: 0, errors: [] };
     for (let i = 0; i < rows.length; i++) {
-      const [firstName, lastName, dni, phone, email, sedeName, turnoName, secName, periodName, planName, primerPagoStr] = rows[i];
-
+      const [firstName, lastName, dni, phone, email, sedeName, turnoName, secName, periodName, planName, primerPagoStr, fechaInscStr] = rows[i];
       if (!firstName || !lastName) { r.errors.push({ row: i + 2, reason: 'Nombres y Apellidos obligatorios' }); continue; }
 
       // Person (crear o reutilizar)
+      const finalEmail = email || (dni ? `${firstName.charAt(0).toLowerCase()}${dni}@suite.edu` : null);
+
       let person = dni ? await this.prisma.person.findUnique({ where: { dni } }) : null;
       if (!person) {
-        person = await this.prisma.person.create({ data: { firstName, lastName, dni: dni || null, phone: phone || null, email: email || null } });
+        person = await this.prisma.person.create({ data: { firstName, lastName, dni: dni || null, phone: phone || null, email: finalEmail } });
+      } else if (finalEmail && !person.email) {
+        person = await this.prisma.person.update({ where: { id: person.id }, data: { email: finalEmail } });
       }
 
       // Sección + período
@@ -220,7 +313,11 @@ export class ImportsService {
       const existing = await this.prisma.enrollment.findFirst({ where: { studentId: person.id, periodId: period.id, status: 'ACTIVE' } });
       if (existing) { r.skipped++; continue; }
 
-      const enrollment = await this.prisma.enrollment.create({ data: { studentId: person.id, sectionId: section.id, periodId: period.id, status: 'ACTIVE' } });
+      const enrolledAt = this.parseDateLoose(fechaInscStr) ?? new Date();
+
+      const enrollment = await this.prisma.enrollment.create({
+        data: { studentId: person.id, sectionId: section.id, periodId: period.id, status: 'ACTIVE', enrolledAt },
+      });
 
       // Plan de pago opcional
       if (planName) {
@@ -228,16 +325,15 @@ export class ImportsService {
         if (plan) {
           const amount = Number(plan.amount) / plan.installments;
           const firstPaid = (primerPagoStr || '').trim().toUpperCase() === 'SI';
-          const today = new Date();
           for (let k = 0; k < plan.installments; k++) {
-            const due = new Date(today); due.setUTCMonth(due.getUTCMonth() + k); due.setUTCDate(1);
+            const due = new Date(enrolledAt); due.setUTCMonth(due.getUTCMonth() + k); due.setUTCDate(1);
             const paid = k === 0 && firstPaid;
             await this.prisma.payment.create({
               data: {
                 enrollmentId: enrollment.id, paymentPlanId: plan.id, installment: k + 1, amount, dueDate: due,
                 status: paid ? 'PAID' : 'PENDING',
                 paidAmount: paid ? amount : null,
-                paidDate: paid ? today : null,
+                paidDate: paid ? enrolledAt : null,
               },
             });
           }
