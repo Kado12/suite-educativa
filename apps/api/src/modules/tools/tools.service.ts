@@ -101,27 +101,40 @@ export class ToolsService {
     const matrix = await this.parseMatrix(buffer);
     let headerIdx = -1;
     for (let i = 0; i < matrix.length; i++) {
-      const upper = matrix[i].map((v) => v.toUpperCase());
+      const upper = matrix[i].map((v) => String(v).toUpperCase());
       if (DIAS.some((d) => upper.includes(d))) { headerIdx = i; break; }
     }
     if (headerIdx === -1) throw new BadRequestException('No se detectó la fila de días');
-    const headers = matrix[headerIdx].map((h) => h.toUpperCase());
+    const headers = matrix[headerIdx].map((h) => String(h).toUpperCase());
+
+    // Detectar columna SLOT por nombre (opcional)
+    const slotIdx = headers.findIndex((h) => h.includes('SLOT'));
 
     const registros: any[] = [];
     for (let i = headerIdx + 1; i < matrix.length; i += 2) {
       const fc = matrix[i] || [];
       const fd = matrix[i + 1] || [];
-      const aula = (fc[0] || '').trim();
+      const aula = String(fc[0] || '').trim();
+      const slot = slotIdx !== -1 ? String(fc[slotIdx] || '').trim() : '';
+
       headers.forEach((dia, col) => {
         if (DIAS.includes(dia)) {
-          const curso = (fc[col] || '').trim();
-          const docente = (fd[col] || '').trim();
-          if (curso && docente && curso.toUpperCase() !== 'NAN') registros.push({ AULA: aula, DOCENTE: docente, CURSO: curso, DIA_SEMANA: dia });
+          const curso = String(fc[col] || '').trim();
+          const docente = String(fd[col] || '').trim();
+          if (curso && docente && curso.toUpperCase() !== 'NAN') {
+            registros.push({ AULA: aula, SLOT: slot, DOCENTE: docente, CURSO: curso, DIA_SEMANA: dia });
+          }
         }
       });
     }
+
     const ord: Record<string, number> = { LUNES: 0, MARTES: 1, MIERCOLES: 2, JUEVES: 3, VIERNES: 4 };
-    registros.sort((x, y) => x.AULA.localeCompare(y.AULA) || ord[x.DIA_SEMANA] - ord[y.DIA_SEMANA] || x.CURSO.localeCompare(y.CURSO));
+    registros.sort((x, y) =>
+      x.AULA.localeCompare(y.AULA) ||
+      (Number(x.SLOT) || 0) - (Number(y.SLOT) || 0) ||
+      ord[x.DIA_SEMANA] - ord[y.DIA_SEMANA] ||
+      x.CURSO.localeCompare(y.CURSO),
+    );
     return { rows: registros, total: registros.length };
   }
 
@@ -193,7 +206,13 @@ export class ToolsService {
     const r = await this.transformSchedule(buffer);
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Horario Ordenado');
-    ws.columns = [{ header: 'AULA', key: 'AULA', width: 10 }, { header: 'DOCENTE', key: 'DOCENTE', width: 26 }, { header: 'CURSO', key: 'CURSO', width: 22 }, { header: 'DIA_SEMANA', key: 'DIA_SEMANA', width: 12 }];
+    ws.columns = [
+      { header: 'AULA', key: 'AULA', width: 10 },
+      { header: 'SLOT', key: 'SLOT', width: 6 },
+      { header: 'DOCENTE', key: 'DOCENTE', width: 26 },
+      { header: 'CURSO', key: 'CURSO', width: 22 },
+      { header: 'DIA_SEMANA', key: 'DIA_SEMANA', width: 12 },
+    ];
     ws.getRow(1).font = { bold: true };
     r.rows.forEach((row) => ws.addRow(row));
     return Buffer.from(await wb.xlsx.writeBuffer());
@@ -250,12 +269,12 @@ export class ToolsService {
         ['11223344', 'Luis', 'Díaz'],
       ]);
     } else if (type === 'schedule') {
-      ws.addRow(['AULA', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES']);
+      ws.addRow(['AULA', 'SLOT', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES']);
       ws.getRow(1).font = { bold: true };
-      ws.addRow(['A11', 'Álgebra', 'Física', 'Lenguaje', 'Álgebra', 'Química']);
-      ws.addRow(['', 'Juan Pérez', 'María Gómez', 'Luis Díaz', 'Juan Pérez', 'Ana Torres']);
-      ws.addRow(['A12', 'Geometría', 'Historia', '', 'Biología', 'Inglés']);
-      ws.addRow(['', 'Pedro Ruiz', 'Lucía Vega', '', 'Rosa Mendoza', 'Jorge Castro']);
+      ws.addRow(['A11', '1', 'Álgebra', 'Física', 'Lenguaje', 'Álgebra', 'Química']);
+      ws.addRow(['', '', 'Juan Pérez', 'María Gómez', 'Luis Díaz', 'Juan Pérez', 'Ana Torres']);
+      ws.addRow(['A11', '2', 'Geometría', 'Historia', '', 'Biología', 'Inglés']);
+      ws.addRow(['', '', 'Pedro Ruiz', 'Lucía Vega', '', 'Rosa Mendoza', 'Jorge Castro']);
     } else if (type === 'cross-info') {
       ws.addRow(['NOMBRES', 'APELLIDOS', 'DNI']);
       ws.getRow(1).font = { bold: true };
@@ -272,11 +291,80 @@ export class ToolsService {
         ['A11', 'María Gómez', 'Física', 'MARTES'],
         ['A12', 'Luis Díaz', 'Geometría', 'LUNES'],
       ]);
+    } else if (type === 'assignments-sections') {
+      ws.addRow(['CODIGO_SECCION']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRows([['A11 - M'], ['A12 - M'], ['B11 - T']]);
+    } else if (type === 'assignments-courses') {
+      ws.addRow(['CODIGO_CURSO']);
+      ws.getRow(1).font = { bold: true };
+      ws.addRows([['ALG01'], ['FIS01'], ['LEN01']]);
     } else {
       throw new BadRequestException('Tipo de plantilla no válido');
     }
 
     const buffer = await wb.xlsx.writeBuffer();
     return Buffer.from(buffer);
+  }
+
+    /** Lee una columna por nombre de encabezado */
+  private async readColumn(buffer: Buffer | ArrayBuffer, columnName: string): Promise<string[]> {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer as ArrayBuffer);
+    const ws = wb.worksheets[0];
+    if (!ws) throw new BadRequestException('El archivo no tiene hojas');
+
+    let colIdx = -1;
+    ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      if (String(cell.value ?? '').trim().toUpperCase() === columnName.toUpperCase()) colIdx = colNumber;
+    });
+    if (colIdx === -1) throw new BadRequestException(`El archivo debe tener la columna '${columnName}'`);
+
+    const values: string[] = [];
+    ws.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const v = row.getCell(colIdx).value;
+      const s = v === null || v === undefined ? '' : String(v).trim();
+      if (s) values.push(s);
+    });
+    return values;
+  }
+
+  /** Resumen + muestra del producto cartesiano secciones × cursos */
+  async assignments(secBuffer: Buffer, curBuffer: Buffer) {
+    const sections = await this.readColumn(secBuffer, 'CODIGO_SECCION');
+    const courses = await this.readColumn(curBuffer, 'CODIGO_CURSO');
+    if (!sections.length) throw new BadRequestException('No se encontraron secciones');
+    if (!courses.length) throw new BadRequestException('No se encontraron cursos');
+
+    const sample: any[] = [];
+    for (const s of sections) {
+      for (const c of courses) {
+        sample.push({ CODIGO_SECCION: s, CODIGO_CURSO: c });
+        if (sample.length >= 15) break;
+      }
+      if (sample.length >= 15) break;
+    }
+
+    return { summary: { sections: sections.length, courses: courses.length, total: sections.length * courses.length }, sample };
+  }
+
+  /** Genera el Excel completo con todas las combinaciones */
+  async assignmentsExport(secBuffer: Buffer, curBuffer: Buffer): Promise<Buffer> {
+    const sections = await this.readColumn(secBuffer, 'CODIGO_SECCION');
+    const courses = await this.readColumn(curBuffer, 'CODIGO_CURSO');
+    if (!sections.length || !courses.length) throw new BadRequestException('Archivos sin datos');
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Asignaciones');
+    const hr = ws.addRow(['CODIGO_SECCION', 'CODIGO_CURSO']);
+    hr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+    ws.getColumn(1).width = 20;
+    ws.getColumn(2).width = 20;
+
+    for (const s of sections) for (const c of courses) ws.addRow([s, c]);
+
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 }

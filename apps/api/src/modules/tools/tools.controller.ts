@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Res, Param, UseGuards, UseInterceptors, UploadedFiles, UploadedFile, Request } from '@nestjs/common';
+import { Controller, Post, Get, Res, Param, UseGuards, UseInterceptors, UploadedFiles, UploadedFile, Request, BadRequestException } from '@nestjs/common';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
@@ -114,5 +114,27 @@ export class ToolsController {
   async crossExport(@UploadedFiles() files: any, @Res() res: Response) {
     const b = await this.svc.crossExport(files.fileInfo[0].buffer, files.fileSchedule[0].buffer);
     res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="horario_con_dni.xlsx"' }); res.send(b);
+  }
+
+    @Post('assignments') @RequirePermissions('tools.view')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'fileSections', maxCount: 1 }, { name: 'fileCourses', maxCount: 1 }]))
+  @ApiConsumes('multipart/form-data')
+  async assignments(@UploadedFiles() files: any, @Request() req) {
+    if (!files?.fileSections?.[0] || !files?.fileCourses?.[0]) throw new BadRequestException('Sube ambos archivos');
+    const result = await this.svc.assignments(files.fileSections[0].buffer, files.fileCourses[0].buffer);
+    this.logTool(req.user, 'ASSIGNMENTS', {
+      fileSections: files.fileSections[0].originalname,
+      fileCourses: files.fileCourses[0].originalname,
+      summary: result.summary,
+    }, req.ip);
+    return result;
+  }
+
+  @Post('assignments/export') @RequirePermissions('tools.view')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'fileSections', maxCount: 1 }, { name: 'fileCourses', maxCount: 1 }]))
+  async assignmentsExport(@UploadedFiles() files: any, @Res() res: Response) {
+    const b = await this.svc.assignmentsExport(files.fileSections[0].buffer, files.fileCourses[0].buffer);
+    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="secciones_creadas.xlsx"' });
+    res.send(b);
   }
 }

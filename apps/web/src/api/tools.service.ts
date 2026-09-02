@@ -44,4 +44,21 @@ export const toolsService = {
     const fd = new FormData(); fd.append('fileInfo', info); fd.append('fileSchedule', sched);
     download(await api.post('/api/tools/cross/export', fd, { responseType: 'blob' }), 'horario_con_dni.xlsx');
   },
+
+  assignments: (sections: File, courses: File) => {
+    const fd = new FormData();
+    fd.append('fileSections', sections);
+    fd.append('fileCourses', courses);
+    return api.post('/api/tools/assignments', fd).then((r) => r.data);
+  },
+  assignmentsExport: async (sections: File, courses: File) => {
+    const fd = new FormData();
+    fd.append('fileSections', sections);
+    fd.append('fileCourses', courses);
+    const res = await api.post('/api/tools/assignments/export', fd, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'secciones_creadas.xlsx'; a.click();
+    window.URL.revokeObjectURL(url);
+  },
 };

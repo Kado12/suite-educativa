@@ -70,7 +70,10 @@ export class AttendanceService {
       where: {
         ...(blockId ? { blockId } : {}),
         dayOfWeek: dow,
-        ...(sedeId ? { section: { classroom: { sedeId } } } : {}),
+        section : {
+          isActive: true,
+          ...(sedeId ? { classroom: { sedeId } } : {}),
+        },
       },
       include: {
         section: { include: { classroom: { include: { sede: true } }, turno: true } },
@@ -195,7 +198,7 @@ export class AttendanceService {
 
     // 2) Sesiones actuales del docente
     const currentSessions = await this.prisma.scheduleSession.findMany({
-      where: { teacherProfileId },
+      where: { teacherProfileId, section: { isActive: true } },
       include: { section: { include: { classroom: { include: { sede: true } }, turno: true } }, course: true },
     });
 

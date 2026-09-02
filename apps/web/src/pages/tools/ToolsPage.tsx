@@ -7,6 +7,7 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { toolsService } from '../../api/tools.service';
 import { auditService } from '../../api/audit.service';
+import { Squares2X2Icon } from '@heroicons/react/24/outline';
 
 const FileInput: React.FC<{ label: string; file: File | null; onFile: (f: File | null) => void; onPreview: () => void }> = ({ label, file, onFile, onPreview }) => (
   <div>
@@ -41,7 +42,7 @@ const ResultTable: React.FC<{ headers: string[]; rows: any[]; max?: number }> = 
 
 export const ToolsPage: React.FC = () => {
   const { success, error } = useToast();
-  const [tab, setTab] = useState<'compare' | 'schedule' | 'cross' | 'history'>('compare');
+  const [tab, setTab] = useState<'compare' | 'schedule' | 'cross' | 'assignments' | 'history'>('compare');
   const [busy, setBusy] = useState(false);
 
   // Preview modal
@@ -64,6 +65,11 @@ export const ToolsPage: React.FC = () => {
 
   // History
   const [history, setHistory] = useState<any[]>([]);
+
+  // Estados:
+  const [aS, setAS] = useState<File | null>(null);
+  const [aC, setAC] = useState<File | null>(null);
+  const [aRes, setARes] = useState<any>(null);
 
   useEffect(() => {
     if (tab === 'history') {
@@ -98,6 +104,7 @@ export const ToolsPage: React.FC = () => {
     { id: 'compare', label: 'Comparar por DNI', icon: DocumentDuplicateIcon, templateType: 'compare', description: 'Compara dos listas de personas y muestra quiénes están en ambas, solo en una, o solo en la otra.', useCase: 'Útil para cruzar registros de inscripción contra listas de asistencia o bases externas.' },
     { id: 'schedule', label: 'Transformar horario', icon: ArrowPathIcon, templateType: 'schedule', description: 'Convierte un horario en formato de tabla (salones × días) a una lista ordenada de asignaciones.', useCase: 'Ideal cuando recibes horarios en formato visual y necesitas estructurarlos.' },
     { id: 'cross', label: 'Cruzar con docentes', icon: UsersIcon, templateType: 'cross-info', description: 'Toma un horario y le agrega el DNI de cada docente usando coincidencia exacta o fuzzy.', useCase: 'Para vincular horarios externos con la base de datos de docentes.' },
+    { id: 'assignments', label: 'Secciones × Cursos', icon: Squares2X2Icon, templateType: null, description: 'Genera una fila por cada combinación sección-curso (producto cartesiano), igual que el script de Python.', useCase: 'Asignaciones masivas sección-curso a partir de dos listados con CODIGO_SECCION y CODIGO_CURSO.' },
     { id: 'history', label: 'Historial', icon: ClockIcon, templateType: null, description: 'Registro de operaciones realizadas.', useCase: '' },
   ];
 
@@ -107,6 +114,7 @@ export const ToolsPage: React.FC = () => {
     COMPARE: 'Comparar por DNI',
     TRANSFORM: 'Transformar horario',
     CROSS: 'Cruzar con docentes',
+    ASSIGNMENTS: 'Secciones × Cursos',
   };
 
   return (
@@ -201,7 +209,7 @@ export const ToolsPage: React.FC = () => {
               <strong>Resultado:</strong> {sRes.total} asignaciones transformadas
             </div>
           )}
-          {sRes && <ResultTable headers={['AULA', 'DOCENTE', 'CURSO', 'DIA_SEMANA']} rows={sRes.rows} />}
+          { sRes && <ResultTable headers={['AULA', 'SLOT', 'DOCENTE', 'CURSO', 'DIA_SEMANA']} rows={sRes.rows} /> }
         </Card>
       )}
 
@@ -222,6 +230,34 @@ export const ToolsPage: React.FC = () => {
                 <strong>Resumen:</strong> {xRes.summary.exact} exactos · {xRes.summary.fuzzy} fuzzy · {xRes.summary.notFound} no encontrados
               </div>
               <ResultTable headers={xRes.rows.length ? Object.keys(xRes.rows[0]) : []} rows={xRes.rows} />
+            </>
+          )}
+        </Card>
+      )}
+
+            {/* ASSIGNMENTS */}
+      {tab === 'assignments' && (
+        <Card>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+            <FileInput label="Secciones (CODIGO_SECCION)" file={aS} onFile={setAS} onPreview={() => aS && handlePreview(aS, 'Secciones')} />
+            <FileInput label="Cursos (CODIGO_CURSO)" file={aC} onFile={setAC} onPreview={() => aC && handlePreview(aC, 'Cursos')} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button onClick={() => run(() => toolsService.assignments(aS!, aC!), setARes)} isLoading={busy} disabled={!aS || !aC}>Generar</Button>
+              {aRes && <Button variant="success" onClick={() => toolsService.assignmentsExport(aS!, aC!)}>📥</Button>}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <Button size="sm" variant="secondary" onClick={() => toolsService.downloadTemplate('assignments-sections')}>Plantilla Secciones</Button>
+            <Button size="sm" variant="secondary" onClick={() => toolsService.downloadTemplate('assignments-courses')}>Plantilla Cursos</Button>
+          </div>
+
+          {aRes && (
+            <>
+              <div style={{ marginTop: 16, padding: 12, background: 'var(--color-neutral-50)', borderRadius: 8, fontSize: 'var(--text-sm)' }}>
+                <strong>Resumen:</strong> {aRes.summary.sections} secciones × {aRes.summary.courses} cursos = <strong>{aRes.summary.total.toLocaleString()} filas</strong>
+              </div>
+              <ResultTable headers={['CODIGO_SECCION', 'CODIGO_CURSO']} rows={aRes.sample} />
             </>
           )}
         </Card>
