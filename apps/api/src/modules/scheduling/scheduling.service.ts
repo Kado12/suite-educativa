@@ -238,11 +238,13 @@ export class SchedulingService {
     });
   }
 
-  private async assertNoConflict(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string }, excludeId?: string) {
+  private async assertNoConflict(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string; turnoId?: string | null }, excludeId?: string) {
     const base: any = excludeId ? { NOT: { id: excludeId } } : {};
     if (d.teacherProfileId) {
-      const t = await this.prisma.scheduleSession.findFirst({ where: { ...base, teacherProfileId: d.teacherProfileId, dayOfWeek: d.dayOfWeek, slot: d.slot } });
-      if (t) throw new ConflictException('El docente ya tiene otra clase en ese día y slot');
+      const t = await this.prisma.scheduleSession.findFirst({
+        where: { ...base, teacherProfileId: d.teacherProfileId, dayOfWeek: d.dayOfWeek, slot: d.slot, turnoId: d.turnoId ?? null },
+      });
+      if (t) throw new ConflictException('El docente ya tiene otra clase en ese día, slot y turno');
     }
     const sec = await this.prisma.scheduleSession.findFirst({ where: { ...base, sectionId: d.sectionId, dayOfWeek: d.dayOfWeek, slot: d.slot } });
     if (sec) throw new ConflictException('La sección ya tiene otra clase en ese día y slot');
@@ -250,34 +252,25 @@ export class SchedulingService {
     if (cur) throw new ConflictException('La sección ya tiene ese curso en este bloque');
   }
 
+  async createSession(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string }) {
+    const section = await this.prisma.section.findUnique({ where: { id: d.sectionId } });
+    const full = { ...d, turnoId: section?.turnoId ?? null };
+    await this.assertNoConflict(full);
+    return this.prisma.scheduleSession.create({ data: { ...d, turnoId: section?.turnoId ?? null } });
+  }
+
   async updateSession(id: string, data: { courseId?: string; teacherProfileId?: string | null; dayOfWeek?: number; slot?: number }) {
-    const ex = await this.prisma.scheduleSession.findUnique({ where: { id } });
+    const ex = await this.prisma.scheduleSession.findUnique({ where: { id }, include: { section: true } });
     if (!ex) throw new NotFoundException('Sesión no encontrada');
     const merged = {
-      sectionId: ex.sectionId, blockId: ex.blockId,
+      sectionId: ex.sectionId, blockId: ex.blockId, turnoId: ex.section.turnoId,
       courseId: data.courseId ?? ex.courseId,
       teacherProfileId: data.teacherProfileId !== undefined ? data.teacherProfileId : ex.teacherProfileId,
       dayOfWeek: data.dayOfWeek ?? ex.dayOfWeek,
       slot: data.slot ?? ex.slot,
     };
     await this.assertNoConflict(merged, id);
-    // Mismo id → conserva asistencias (histórico)
     return this.prisma.scheduleSession.update({ where: { id }, data: { courseId: merged.courseId, teacherProfileId: merged.teacherProfileId, dayOfWeek: merged.dayOfWeek, slot: merged.slot } });
-  }
-
-  async createSession(
-  d: Prisma.ScheduleSessionUncheckedCreateInput,
-  ) {
-    await this.assertNoConflict({
-      sectionId: d.sectionId,
-      blockId: d.blockId,
-      courseId: d.courseId,
-      teacherProfileId: d.teacherProfileId ?? null,
-      dayOfWeek: d.dayOfWeek,
-      slot: d.slot,
-    });
-
-    return this.prisma.scheduleSession.create({ data: d });
   }
 
   // async creataeSession(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string }) {

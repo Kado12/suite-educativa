@@ -111,6 +111,7 @@ model Turno {
   sections      Section[]
   teacherTurnos TeacherTurno[]
   slotPrefs     TeacherSlotPref[]
+  sessions      ScheduleSession[]
 
   @@map("turnos")
 }
@@ -358,23 +359,23 @@ model Payment {
 // ==================== HORARIOS ====================
 
 model ScheduleSession {
-  id               String @id @default(cuid())
+  id               String   @id @default(cuid())
+  blockId          String
   sectionId        String
   courseId         String
-  teacherProfileId String
-  blockId          String
+  teacherProfileId String?
+  turnoId          String?
   dayOfWeek        Int
   slot             Int
-  createdAt         DateTime @default(now())
+  createdAt        DateTime @default(now())
 
+  block          Block              @relation(fields: [blockId], references: [id], onDelete: Cascade)
   section        Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  teacherProfile TeacherProfile     @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
-  block          Block              @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  teacherProfile TeacherProfile?    @relation(fields: [teacherProfileId], references: [id], onDelete: SetNull)
+  turno          Turno?             @relation(fields: [turnoId], references: [id], onDelete: SetNull)
   attendances    AttendanceRecord[]
 
-  @@unique([sectionId, dayOfWeek, slot])
-  @@unique([teacherProfileId, dayOfWeek, slot])
   @@unique([sectionId, courseId, blockId])
   @@map("schedule_sessions")
 }

@@ -360,14 +360,36 @@ export class ImportsService {
       const teacher = dni ? await this.prisma.person.findUnique({ where: { dni }, include: { teacherProfile: true } }) : null;
       if (!section || !course) { r.errors.push({ row: i + 2, reason: `Sección o curso no encontrado (${secName} / ${courseName})` }); continue; }
 
+      const teacherId = teacher?.teacherProfile?.id || null;
+
+      // ===== Pre-validación: cruce de docente (misma día+slot en OTRA sección) =====
+      if (teacherId) {
+        const busy = await this.prisma.scheduleSession.findFirst({
+          where: { blockId, teacherProfileId: teacherId, dayOfWeek: day, slot, turnoId: section.turnoId, NOT: { sectionId: section.id } },
+        });
+        if (busy) {
+          r.errors.push({ row: i + 2, reason: `Cruce: ${teacher.lastName} ${teacher.firstName} ya ocupa día ${day} slot ${slot} en el mismo turno` });
+          continue;
+        }
+      }
+
       const existing = await this.prisma.scheduleSession.findFirst({ where: { blockId, sectionId: section.id, dayOfWeek: day, slot } });
-      if (existing) {
-        // Actualiza pero MANTIENE el id → conserva asistencias
-        await this.prisma.scheduleSession.update({ where: { id: existing.id }, data: { courseId: course.id, teacherProfileId: teacher?.teacherProfile?.id || existing.teacherProfileId } });
-        matched.push(existing.id); r.skipped++;
-      } else {
-        const created = await this.prisma.scheduleSession.create({ data: { blockId, sectionId: section.id, courseId: course.id, teacherProfileId: teacher?.teacherProfile?.id || null, dayOfWeek: day, slot } });
-        matched.push(created.id); r.created++;
+      try {
+        if (existing) {
+          await this.prisma.scheduleSession.update({
+            where: { id: existing.id },
+            data: { courseId: course.id, teacherProfileId: teacherId || existing.teacherProfileId },
+          });
+          matched.push(existing.id); r.skipped++;
+        } else {
+          const created = await this.prisma.scheduleSession.create({
+            data: { blockId, sectionId: section.id, courseId: course.id, teacherProfileId: teacherId, dayOfWeek: day, slot, turnoId: section.turnoId },
+          });
+          matched.push(created.id); r.created++;
+        }
+      } catch (e: any) {
+        // Cualquier restricción única se reporta como error de fila, no como 500
+        r.errors.push({ row: i + 2, reason: `Conflicto (${secName} · ${courseName} · día ${day} slot ${slot}): restricción única` });
       }
     }
 
