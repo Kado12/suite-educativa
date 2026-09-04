@@ -15,7 +15,7 @@ ALTER TABLE `schedule_sessions` ADD COLUMN `turnoId` VARCHAR(191) NULL,
     MODIFY `teacherProfileId` VARCHAR(191) NULL;
 
 -- AddForeignKey
-ALTER TABLE `teacher_sede_days` ADD CONSTRAINT `teacher_sede_days_teacherProfileId_fkey` FOREIGN KEY (`teacherProfileId`) REFERENCES `teacher_profiles`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+-- ALTER TABLE `teacher_sede_days` ADD CONSTRAINT `teacher_sede_days_teacherProfileId_fkey` FOREIGN KEY (`teacherProfileId`) REFERENCES `teacher_profiles`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `schedule_sessions` ADD CONSTRAINT `schedule_sessions_teacherProfileId_fkey` FOREIGN KEY (`teacherProfileId`) REFERENCES `teacher_profiles`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
