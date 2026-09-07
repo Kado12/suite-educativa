@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Res, UseGuards, UseInterceptors, UploadedFile, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Res, UseGuards, UseInterceptors, UploadedFile, Body, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
@@ -24,8 +24,16 @@ export class ImportsController {
   @Post(':type') @RequirePermissions('academic.manage')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  async importFile(@Param('type') type: string, @UploadedFile() file: any, @Body('blockId') blockId?: string) {
+  async importFile(@Param('type') type: string, @UploadedFile() file: any, @Body('blockId') blockId?: string, @Body('sedeId') sedeId?: string) {
     if (!file) throw new Error('Debes subir un archivo');
-    return this.svc.importFile(type, file.buffer, blockId);
+    return this.svc.importFile(type, file.buffer, blockId, sedeId);
+  }
+
+  @Post('horario') @RequirePermissions('academic.manage')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  async importSchedule(@UploadedFile() file: any, @Body('blockId') blockId: string, @Body('sedeId') sedeId?: string) {
+    if (!file) throw new BadRequestException('Sube un archivo');
+    return this.svc.importSchedule(file.buffer, blockId, sedeId);
   }
 }

@@ -203,7 +203,7 @@ export class ImportsService {
     return this.DAY_MAP[key] || 0;
   }
 
-  async importFile(type: string, buffer: Buffer, blockId?: string): Promise<ImportResult> {
+  async importFile(type: string, buffer: Buffer, blockId?: string, sedeId?: string): Promise<ImportResult> {
     if (type === 'students') return this.importPeople(buffer, false);
     if (type === 'sections') return this.importSections(buffer);
     if (type === 'sedes') return this.importSedes(buffer);
@@ -213,7 +213,7 @@ export class ImportsService {
     if (type === 'salones') return this.importSalones(buffer);
     if (type === 'alumnos') return this.importStudents(buffer);
     if (type === 'teachers') return this.importTeachers(buffer);
-    if (type === 'horario') return this.importSchedule(buffer, blockId!);
+    if (type === 'horario') return this.importSchedule(buffer, blockId!, sedeId!);
     throw new BadRequestException('Tipo no válido');
   }
 
@@ -344,7 +344,7 @@ export class ImportsService {
     return r;
   }
 
-  async importSchedule(buffer: Buffer, blockId: string): Promise<ImportResult> {
+  async importSchedule(buffer: Buffer, blockId: string, sedeId?: string): Promise<ImportResult> {
     if (!blockId) throw new BadRequestException('Selecciona un bloque para importar el horario');
     const rows = await this.parseRows(buffer);
     const r: ImportResult = { created: 0, skipped: 0, errors: [] };
@@ -355,14 +355,17 @@ export class ImportsService {
       const day = this.parseDay(diaStr); const slot = parseInt(slotStr);
       if (!secName || !day || !slot || !courseName) { r.errors.push({ row: i + 2, reason: 'Datos incompletos' }); continue; }
 
-      const section = await this.prisma.section.findFirst({ where: { name: secName } });
+      const sectionWhere: any = { name: secName };
+      if (sedeId) sectionWhere.classroom = { sedeId };
+      const section = await this.prisma.section.findFirst({ where: sectionWhere });
+
       const course = await this.prisma.course.findFirst({ where: { name: courseName } });
       const teacher = dni ? await this.prisma.person.findUnique({ where: { dni }, include: { teacherProfile: true } }) : null;
       if (!section || !course) { r.errors.push({ row: i + 2, reason: `Sección o curso no encontrado (${secName} / ${courseName})` }); continue; }
 
       const teacherId = teacher?.teacherProfile?.id || null;
 
-      // ===== Pre-validación: cruce de docente (misma día+slot en OTRA sección) =====
+      // Pre-check de cruce (mismo turno+día+slot)
       if (teacherId) {
         const busy = await this.prisma.scheduleSession.findFirst({
           where: { blockId, teacherProfileId: teacherId, dayOfWeek: day, slot, turnoId: section.turnoId, NOT: { sectionId: section.id } },
@@ -376,10 +379,7 @@ export class ImportsService {
       const existing = await this.prisma.scheduleSession.findFirst({ where: { blockId, sectionId: section.id, dayOfWeek: day, slot } });
       try {
         if (existing) {
-          await this.prisma.scheduleSession.update({
-            where: { id: existing.id },
-            data: { courseId: course.id, teacherProfileId: teacherId || existing.teacherProfileId },
-          });
+          await this.prisma.scheduleSession.update({ where: { id: existing.id }, data: { courseId: course.id, teacherProfileId: teacherId || existing.teacherProfileId } });
           matched.push(existing.id); r.skipped++;
         } else {
           const created = await this.prisma.scheduleSession.create({
@@ -388,19 +388,21 @@ export class ImportsService {
           matched.push(created.id); r.created++;
         }
       } catch (e: any) {
-        // Cualquier restricción única se reporta como error de fila, no como 500
         r.errors.push({ row: i + 2, reason: `Conflicto (${secName} · ${courseName} · día ${day} slot ${slot}): restricción única` });
       }
     }
 
-    // Elimina sesiones que ya no están, SOLO si no tienen asistencias
-    const remaining = await this.prisma.scheduleSession.findMany({
-      where: { blockId, NOT: { id: { in: matched } } },
-      include: { _count: { select: { attendances: true } } },
-    });
-    for (const s of remaining) {
-      if (s._count.attendances === 0) await this.prisma.scheduleSession.delete({ where: { id: s.id } });
+    // Eliminar sesiones restantes SOLO de la sede filtrada (preserva asistencias)
+    if (sedeId) {
+      const remaining = await this.prisma.scheduleSession.findMany({
+        where: { blockId, section: { classroom: { sedeId } }, NOT: { id: { in: matched } } },
+        include: { _count: { select: { attendances: true } } },
+      });
+      for (const s of remaining) {
+        if (s._count.attendances === 0) await this.prisma.scheduleSession.delete({ where: { id: s.id } });
+      }
     }
+
     return r;
   }
 }

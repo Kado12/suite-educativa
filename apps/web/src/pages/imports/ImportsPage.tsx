@@ -25,23 +25,38 @@ export const ImportsPage: React.FC = () => {
 
   const [periods, setPeriods] = useState<any[]>([]);
   const [blocks, setBlocks] = useState<any[]>([]);
+  const [sedes, setSedes] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [blockId, setBlockId] = useState('');
+  const [sedeForSchedule, setSedeForSchedule] = useState('');
 
-  useEffect(() => { academicService.listPeriods().then(setPeriods); }, []);
+  useEffect(() => { academicService.listPeriods().then(setPeriods); academicService.listSedes().then(setSedes); }, []);
   useEffect(() => { if (periodId) academicService.listBlocks(periodId).then(setBlocks); }, [periodId]);
 
   const handleImport = async () => {
     if (!file) { error('Selecciona un archivo'); return; }
     if (type === 'horario' && !blockId) { error('Selecciona un bloque para el horario'); return; }
-    setUploading(true); setResult(null);
+
+    setUploading(true);
+    setResult(null);
+
     try {
-      const extra = type === 'horario' ? { blockId } : { blockId: '' };
-      const r = await importsService.importFile(type, file, extra );
+      const extra: Record<string, string> = {};
+      if (type === 'horario') {
+        extra.blockId = blockId;
+        if (sedeForSchedule) extra.sedeId = sedeForSchedule;
+      }
+
+      const r = await importsService.importFile(type, file, extra);
       setResult(r);
-      r.errors.length === 0 ? success(`✅ ${r.created} creados, ${r.skipped} omitidos`) : error(`⚠️ ${r.created} creados, ${r.errors.length} errores`);
-    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
-    finally { setUploading(false); }
+      r.errors.length === 0
+        ? success(`✅ ${r.created} creados, ${r.skipped} omitidos`)
+        : error(`⚠️ ${r.created} creados, ${r.errors.length} errores`);
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -62,7 +77,9 @@ export const ImportsPage: React.FC = () => {
               <Select label="Período" value={periodId} onChange={(e) => { setPeriodId(e.target.value); setBlockId(''); }}
                 options={[{ value: '', label: 'Selecciona bloque' }, ...periods.map((p) => ({ value: p.id, label: p.name }))]} />
               <Select label="Bloque" value={blockId} onChange={(e) => setBlockId(e.target.value)}
-                options={[{ value: '', label: 'Selecciona bloque' }, ...blocks.map((b) => ({ value: b.id, label: b.name }))]} />
+                options={[{ value: '', label: 'Selecciona bloque' }, ...blocks.map((b) => ({ value: b.id, label: b.name }))]} />  
+              <Select label="Sede (opcional, importa solo esa sede)" value={sedeForSchedule} onChange={(e) => setSedeForSchedule(e.target.value)}
+                options={[{ value: '', label: 'Todas las sedes' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]} />
             </>
           )}
 
