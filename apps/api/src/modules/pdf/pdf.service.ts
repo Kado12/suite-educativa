@@ -6,6 +6,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import { photoPublicId } from '../../config/storage';
+import { INSTITUTION } from '../../config/institution';
 
 @Injectable()
 export class PdfService {
@@ -99,8 +100,8 @@ export class PdfService {
 
       // ===== Encabezado =====
       if (logoCepu) { try { doc.image(logoCepu, 40, 40, { fit: [46, 46] }); } catch {} }
-      doc.font('Helvetica-Bold').fontSize(13).fillColor('#0E7DC2').text('CEPU-UNICA', 96, 46, { width: right - 96 });
-      doc.font('Helvetica').fontSize(8).fillColor('#374151').text('Ingreso Directo a la UNICA', 96, 62, { width: right - 96 });
+      doc.font('Helvetica-Bold').fontSize(13).fillColor('#0E7DC2').text(INSTITUTION.name, 96, 46, { width: right - 96 });
+      doc.font('Helvetica').fontSize(8).fillColor('#374151').text(INSTITUTION.tagline, 96, 62, { width: right - 96 });
       doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827').text(`RECIBO N° ${payment.id.slice(0, 8).toUpperCase()}`, 96, 76, { width: right - 96 });
 
       doc.moveTo(40, 96).lineTo(right, 96).strokeColor('#0E7DC2').lineWidth(1.2).stroke();
@@ -188,7 +189,7 @@ export class PdfService {
       doc.rect(8, 8, W - 16, 44).fill('#EAF4FB');
       if (logoUns) { try { doc.image(logoUns, 12, 13, { fit: [30, 30] }); } catch {} }
       if (logoCepu) { try { doc.image(logoCepu, W - 42, 13, { fit: [30, 30] }); } catch {} }
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#0A5A8C').text('SUITE ACADÉMICA', 0, 17, { width: W, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#0A5A8C').text(INSTITUTION.name, 0, 17, { width: W, align: 'center' });
       doc.font('Helvetica').fontSize(6.5).fillColor('#B78900').text('CARNÉ ESTUDIANTIL', 0, 29, { width: W, align: 'center' });
       doc.rect(8, 52, W - 16, 2).fill('#FFC621');
 
@@ -199,7 +200,7 @@ export class PdfService {
       doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827').text(turno, 0, 88, { width: W, align: 'center' });
 
       // ===== CEPU + período =====
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#0E7DC2').text(`CEPU ${periodLabel}`, 0, 99, { width: W, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#0E7DC2').text(`${INSTITUTION.shortName} ${periodLabel}`, 0, 99, { width: W, align: 'center' });
 
       // ===== Foto centrada con marco azul =====
       const pw = 86, ph = 115;
@@ -237,7 +238,7 @@ export class PdfService {
   private async getPhoto43(student: any): Promise<Buffer | null> {
     if (student.dni) {
       try {
-        const url43 = cloudinary.url(`suite-educativa/${student.dni}`, {
+        const url43 = cloudinary.url(photoPublicId(student.dni), {
           crop: 'fill', width: 400, height: 300, gravity: 'face',
         });
         const res = await axios.get(url43, { responseType: 'arraybuffer' });
@@ -260,7 +261,7 @@ export class PdfService {
 
     // ===== Encabezado centrado =====
     doc.font('Helvetica-Bold').fontSize(15).fillColor('#1e3a8a')
-      .text('SUITE EDUCATIVA', 0, offsetY + 28, { align: 'center', width: this.PAGE_WIDTH });
+      .text(`${INSTITUTION.appName} - ${INSTITUTION.shortName}`, 0, offsetY + 28, { align: 'center', width: this.PAGE_WIDTH });
     doc.font('Helvetica').fontSize(9).fillColor('#374151')
       .text('FICHA DE MATRÍCULA DEL ESTUDIANTE', 0, offsetY + 48, { align: 'center', width: this.PAGE_WIDTH });
 
@@ -318,7 +319,7 @@ export class PdfService {
     const footerY = offsetY + height - 34;
     doc.moveTo(margin, footerY).lineTo(rightEdge, footerY).strokeColor('#d1d5db').lineWidth(0.5).stroke();
     doc.font('Helvetica').fontSize(7).fillColor('#9ca3af')
-      .text(`Generado el ${new Date().toLocaleDateString()} | Documento: ${student.dni}`, 0, footerY + 8, { align: 'center', width: this.PAGE_WIDTH });
+      .text(`Generado el ${new Date().toLocaleDateString()} | Documento: ${student.dni} | ${INSTITUTION.address} | ${INSTITUTION.phone}`, 0, footerY + 8, { align: 'center', width: this.PAGE_WIDTH });
   }
 
   private academicField(doc: any, label: string, value: string, x: number, y: number, width: number) {

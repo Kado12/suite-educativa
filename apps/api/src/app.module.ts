@@ -19,6 +19,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { UploadModule } from './modules/upload/upload.module';
 import { PdfModule } from './modules/pdf/pdf.module';
+import { ConfigController } from './modules/config/config.controller';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor}
-  ]
+  ],
+  controllers: [ConfigController],
 })
 export class AppModule {}
