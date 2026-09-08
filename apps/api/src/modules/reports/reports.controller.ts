@@ -34,4 +34,15 @@ export class ReportsController {
     });
     res.send(buffer);
   }
+
+  @Get('physical-attendance') @RequirePermissions('reports.view')
+  async physicalAttendance(
+    @Query('periodId') periodId: string, @Query('weekNumber') weekNumber: string,
+    @Query('sedeId') sedeId: string, @Query('turnoId') turnoId: string, @Query('sectionId') sectionId: string,
+    @Res() res: Response,
+  ) {
+    const b = await this.svc.exportPhysicalAttendance({ periodId, weekNumber: parseInt(weekNumber) || 1, sedeId, turnoId, sectionId });
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="asistencia-fisica.xlsx"' });
+    res.send(b);
+  }
 }

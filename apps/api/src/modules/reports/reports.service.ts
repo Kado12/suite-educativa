@@ -223,4 +223,88 @@ export class ReportsService {
     const buffer = await wb.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
+
+  async exportPhysicalAttendance(params: { periodId: string; weekNumber: number; sedeId?: string; turnoId?: string; sectionId?: string }): Promise<Buffer> {
+    const period = await this.prisma.period.findUnique({ where: { id: params.periodId } });
+    if (!period) throw new NotFoundException('Período no encontrado');
+    const week = params.weekNumber || 1;
+    const weekStart = addDays(period.startDate, (week - 1) * 7);
+    const days = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+    const DAY_NAMES = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES'];
+
+    const sections = await this.prisma.section.findMany({
+      where: {
+        isActive: true,
+        ...(params.sectionId ? { id: params.sectionId } : {}),
+        ...(params.turnoId ? { turnoId: params.turnoId } : {}),
+        ...(params.sedeId ? { classroom: { sedeId: params.sedeId } } : {}),
+      },
+      include: {
+        classroom: { include: { sede: true } },
+        turno: true,
+        enrollments: { where: { status: 'ACTIVE', periodId: params.periodId }, include: { student: true } },
+      },
+      orderBy: [{ classroom: { sede: { name: 'asc' } } }, { turno: { name: 'asc' } }, { name: 'asc' }],
+    });
+
+    const wb = new ExcelJS.Workbook();
+
+    // ===== Hoja Resumen =====
+    const wsRes = wb.addWorksheet('Resumen');
+    wsRes.addRow(['REPORTE DE ASISTENCIA FÍSICA SEMANAL']);
+    wsRes.getRow(1).font = { bold: true, size: 14 };
+    wsRes.addRow([`${period.name} · Semana ${week} (${formatDate(days[0])} al ${formatDate(days[4])})`]);
+    wsRes.addRow([]);
+    const rhr = wsRes.addRow(['Sede', 'Salón', 'Turno', 'Sección', 'Alumnos']);
+    rhr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    rhr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+    [16, 10, 12, 14, 10].forEach((w, i) => { wsRes.getColumn(i + 1).width = w; });
+    sections.forEach((s) => wsRes.addRow([s.classroom.sede.name, s.classroom.name, s.turno.name, s.name, s.enrollments.length]));
+
+    // ===== Una hoja por sección =====
+    for (const sec of sections) {
+      const ws = wb.addWorksheet(sec.name.replace(/[\\/*?:[\]]/g, '-').slice(0, 31));
+      ws.columns = [
+        { width: 5 }, { width: 26 }, { width: 22 }, { width: 12 },
+        { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 },
+      ];
+
+      ws.mergeCells('A1:I1');
+      const t = ws.getCell('A1'); t.value = 'ASISTENCIA FÍSICA SEMANAL'; t.font = { bold: true, size: 14 }; t.alignment = { horizontal: 'center' };
+      ws.mergeCells('A2:I2');
+      const sub = ws.getCell('A2'); sub.value = `${period.name} · Semana ${week} (${formatDate(days[0])} al ${formatDate(days[4])})`; sub.font = { size: 10, color: { argb: 'FF6B7280' } }; sub.alignment = { horizontal: 'center' };
+
+      ws.addRow([]);
+      const i1 = ws.addRow(['Sede:', sec.classroom.sede.name, '', 'Salón:', sec.classroom.name]);
+      const i2 = ws.addRow(['Turno:', sec.turno.name, '', 'Sección:', sec.name]);
+      [i1, i2].forEach((r) => { r.getCell(1).font = { bold: true }; r.getCell(4).font = { bold: true }; });
+
+      ws.addRow([]);
+      const hr = ws.addRow(['N°', 'APELLIDOS', 'NOMBRES', 'DNI', ...DAY_NAMES]);
+      hr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      hr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
+      hr.alignment = { vertical: 'middle', horizontal: 'center' };
+      hr.height = 20;
+
+      const students = sec.enrollments
+        .map((e) => e.student)
+        .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+
+      students.forEach((st, idx) => {
+        const r = ws.addRow([idx + 1, st.lastName, st.firstName, st.dni || '', '', '', '', '', '']);
+        r.height = 28; // espacio para firma/marca
+      });
+
+      // Bordes y centrado de las casillas de días
+      ws.eachRow((row, n) => {
+        if (n < hr.number) return;
+        row.eachCell({ includeEmpty: true }, (c) => {
+          c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          if (Number(c.col) >= 5) c.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
+    }
+
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
 }

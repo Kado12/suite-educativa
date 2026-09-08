@@ -20,7 +20,14 @@ export const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const [phys, setPhys] = useState<any>({ periodId: '', weekNumber: 1, sedeId: '', turnoId: '', sectionId: '' });
+  const [turnos, setTurnos] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [physLoading, setPhysLoading] = useState(false);
+
   useEffect(() => {
+    academicService.listTurnos().then(setTurnos);
+    academicService.listSections().then(setSections);
     Promise.all([academicService.listPeriods(), academicService.listSedes(), academicService.listAreas(), peopleService.listTeachers()]).then(([p, s, a, t]) => {
       setPeriods(p); setSedes(s); setAreas(a); setTeachers(t);
       const current = p.find((x: any) => x.isActive);
@@ -35,6 +42,18 @@ export const ReportsPage: React.FC = () => {
   const setParam = (k: string, v: any) => { setParams((p: any) => ({ ...p, [k]: v })); setLoaded(false); };
 
   const allCourses = areas.flatMap((a) => a.courses.map((c: any) => ({ ...c, areaName: a.name })));
+
+  const physSections = sections.filter((s) =>
+    (!phys.sedeId || s.classroom?.sede?.id === phys.sedeId) &&
+    (!phys.turnoId || s.turno?.id === phys.turnoId));
+    
+  const handlePhys = async () => {
+    if (!phys.periodId) { error('Selecciona período'); return; }
+    setPhysLoading(true);
+    try { await reportsService.downloadPhysicalAttendance(phys); success('📥 Asistencia física descargada'); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
+    finally { setPhysLoading(false); }
+  };
 
   const handleLoad = async () => {
     setLoading(true);
@@ -155,6 +174,22 @@ export const ReportsPage: React.FC = () => {
           </div>
         </Card>
       )}
+
+      <Card style={{ marginTop: 16 }}>
+        <h3 className="card-title">📄 Asistencia física semanal (para imprimir)</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 12 }}>
+          <Select label="Período" value={phys.periodId} onChange={(e) => setPhys({ ...phys, periodId: e.target.value })} options={[{ value: '', label: 'Todas' }, ...periods.map((p) => ({ value: p.id, label: p.name }))]} />
+          <Select label="Semana" value={String(phys.weekNumber)} onChange={(e) => setPhys({ ...phys, weekNumber: parseInt(e.target.value) })}
+            options={Array.from({ length: periods.find((p) => p.id === phys.periodId)?.weeks || 12 }, (_, i) => ({ value: String(i + 1), label: `Semana ${i + 1}` }))} />
+          <Select label="Sede" value={phys.sedeId} onChange={(e) => setPhys({ ...phys, sedeId: e.target.value, sectionId: '' })} options={[{ value: '', label: 'Todas' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]} />
+          <Select label="Turno" value={phys.turnoId} onChange={(e) => setPhys({ ...phys, turnoId: e.target.value, sectionId: '' })} options={[{ value: '', label: 'Todos' }, ...turnos.map((t) => ({ value: t.id, label: t.name }))]} />
+          <Select label="Sección" value={phys.sectionId} onChange={(e) => setPhys({ ...phys, sectionId: e.target.value })} options={[{ value: '', label: 'Todas' }, ...physSections.map((s) => ({ value: s.id, label: s.name }))]} />
+          <Button variant="success" onClick={handlePhys} isLoading={physLoading}>📥 Descargar</Button>
+        </div>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 10 }}>
+          Genera una hoja por sección con alumnos ordenados alfabéticamente y 5 casillas (LUN–VIE) para firma.
+        </p>
+      </Card>
     </div>
   );
 };
