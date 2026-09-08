@@ -6,7 +6,10 @@ export interface ImportResult { created: number; skipped: number; errors: { row:
 
 export const IMPORT_TEMPLATES: Record<string, { headers: string[]; example: string[] }> = {
   students: { headers: ['Nombres', 'Apellidos', 'DNI', 'Telefono', 'Email'], example: ['Ana', 'Torres', '44444444', '999999999', 'ana@mail.com'] },
-  sections: { headers: ['Sede', 'Salon', 'Turno', 'NombreSeccion'], example: ['Sede Central', 'A11', 'Mañana', ''] },
+  sections: {
+    headers: ['Sede', 'Salon', 'Turno', 'NombreSeccion', 'Cupo', 'Prioridad'],
+    example: ['Sede Central', 'A11', 'Mañana', 'A11 - M', '25', '1'],
+  },
   sedes: { headers: ['Nombre'], example: ['Sede Central'] },
   areas: { headers: ['Nombre'], example: ['Matemáticas'] },
   cursos: { headers: ['Nombre', 'Area'], example: ['Álgebra', 'Matemáticas'] },
@@ -170,29 +173,57 @@ export class ImportsService {
 
   async importSections(buffer: Buffer): Promise<ImportResult> {
     const rows = await this.parseRows(buffer);
-    const result: ImportResult = { created: 0, skipped: 0, errors: [] };
-    for (let i = 0; i < rows.length; i++) {
-      const [sedeName, salonName, turnoName, sectionName] = rows[i];
-      if (!sedeName || !salonName || !turnoName) { result.errors.push({ row: i + 2, reason: 'Sede, Salón y Turno obligatorios' }); continue; }
+    const r: ImportResult = { created: 0, skipped: 0, errors: [] };
 
+    for (let i = 0; i < rows.length; i++) {
+      const [sedeName, salonName, turnoName, secName, cupoStr, prioStr] = rows[i];
+      if (!sedeName || !salonName || !turnoName || !secName) {
+        r.errors.push({ row: i + 2, reason: 'Sede, Salón, Turno y Sección obligatorios' });
+        continue;
+      }
+
+      // Sede y salón (se crean si no existen)
       let sede = await this.prisma.sede.findFirst({ where: { name: sedeName } });
       if (!sede) sede = await this.prisma.sede.create({ data: { name: sedeName } });
-
-      const turno = await this.prisma.turno.findFirst({ where: { name: turnoName } });
-      if (!turno) { result.errors.push({ row: i + 2, reason: `Turno no encontrado: ${turnoName}` }); continue; }
 
       let classroom = await this.prisma.classroom.findFirst({ where: { name: salonName, sedeId: sede.id } });
       if (!classroom) classroom = await this.prisma.classroom.create({ data: { name: salonName, sedeId: sede.id } });
 
-      const exists = await this.prisma.section.findFirst({ where: { classroomId: classroom.id, turnoId: turno.id } });
-      if (exists) { result.skipped++; continue; }
+      // El turno debe existir
+      const turno = await this.prisma.turno.findFirst({ where: { name: turnoName } });
+      if (!turno) { r.errors.push({ row: i + 2, reason: `Turno no encontrado: ${turnoName}` }); continue; }
+
+      const capacity = parseInt(cupoStr) || 30;
+      const priority = parseInt(prioStr);
+
+      const existing = await this.prisma.section.findFirst({ where: { classroomId: classroom.id, turnoId: turno.id } });
+      if (existing) {
+        // Ya existe: actualiza nombre/cupo/prioridad si se proveen
+        await this.prisma.section.update({
+          where: { id: existing.id },
+          data: {
+            name: secName,
+            ...(cupoStr ? { capacity } : {}),
+            ...(prioStr && !isNaN(priority) ? { enrollmentPriority: priority } : {}),
+          },
+        });
+        r.skipped++;
+        continue;
+      }
 
       await this.prisma.section.create({
-        data: { name: sectionName || `${salonName} - ${turno.name.charAt(0)}`, classroomId: classroom.id, turnoId: turno.id },
+        data: {
+          name: secName,
+          classroomId: classroom.id,
+          turnoId: turno.id,
+          capacity,
+          enrollmentPriority: !isNaN(priority) ? priority : 0,
+          isActive: true,
+        },
       });
-      result.created++;
+      r.created++;
     }
-    return result;
+    return r;
   }
 
   private DAY_MAP: Record<string, number> = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5 };
