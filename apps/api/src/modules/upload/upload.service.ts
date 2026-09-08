@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
+import { STORAGE_FOLDER } from '../../config/storage';
 import * as path from 'path';
 
 @Injectable()
@@ -23,7 +24,7 @@ export class UploadService {
     }
 
     const options: any = {
-      folder: 'suite-educativa',
+      folder: STORAGE_FOLDER,
       resource_type: 'image',
       transformation: [{ width: 1600, height: 900, crop: 'limit' }],
     };
@@ -46,15 +47,15 @@ export class UploadService {
   
   async deleteImage(publicId: string): Promise<void> {
     try {
-      await cloudinary.uploader.destroy(`suite-educativa/${publicId}`, { invalidate: true });
+      await cloudinary.uploader.destroy(`${STORAGE_FOLDER}/${publicId}`, { invalidate: true });
     } catch {}
   }
 
   async renameImage(oldPublicId: string, newPublicId: string): Promise<string | null> {
     try {
       const result = await cloudinary.uploader.rename(
-        `suite-educativa/${oldPublicId}`,
-        `suite-educativa/${newPublicId}`,
+        `${STORAGE_FOLDER}/${oldPublicId}`,
+        `${STORAGE_FOLDER}/${newPublicId}`,
         { overwrite: true },
       );
       return result.secure_url;

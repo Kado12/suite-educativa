@@ -5,6 +5,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import { photoPublicId } from '../../config/storage';
 
 @Injectable()
 export class PdfService {
@@ -157,7 +158,7 @@ export class PdfService {
     let photoBuffer: Buffer | null = null;
     if (student.dni) {
       try {
-        const url = cloudinary.url(`suite-educativa/${student.dni}`, { crop: 'fill', width: 300, height: 400, gravity: 'face' });
+        const url = cloudinary.url(photoPublicId(student.dni), { crop: 'fill', width: 300, height: 400, gravity: 'face' });
         const res = await axios.get(url, { responseType: 'arraybuffer' });
         photoBuffer = Buffer.from(res.data);
       } catch {}
