@@ -12,9 +12,11 @@ import {
   ArrowRightOnRectangleIcon,
   ShieldCheckIcon,
   ArrowDownOnSquareStackIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
-import { APP_NAME } from '@suite/shared';
+import { hasPermission } from '@suite/shared';
 import { useAuth } from '../../context/AuthContext';
+import { useConfig } from '../../context/ConfigContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -25,6 +27,7 @@ interface MenuItem {
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   section?: string;
+  permission?: string;
 }
 
 const MENU: MenuItem[] = [
@@ -38,11 +41,20 @@ const MENU: MenuItem[] = [
   { path: '/tools', label: 'Herramientas', icon: WrenchScrewdriverIcon, section: 'Sistema' },
   { path: '/users', label: 'Usuarios', icon: ShieldCheckIcon, section: 'Sistema' },
   { path: '/imports', label: 'Importar', icon: ArrowDownOnSquareStackIcon, section: 'Sistema' },
+  { path: '/settings', label: 'Ajustes', icon: Cog6ToothIcon, section: 'Sistema', permission: 'academic.manage' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { user, logout } = useAuth();
+  const { settings } = useConfig();
   const nav = useNavigate()
+
+  const institutionName = settings?.['institution.name'] || 'Suite Educativa';
+
+  const visibleMenu = MENU.filter((item) => {
+    if (!item.permission) return true;
+    return user && hasPermission(user.role as any, item.permission as any);
+  });
 
   const sections = Array.from(new Set(MENU.map((m) => m.section || 'General')));
 
@@ -53,14 +65,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           <AcademicCapIcon />
         </div>
         <div className="sidebar-brand-text">
-          <div className="sidebar-brand-title">{APP_NAME}</div>
+          <div className="sidebar-brand-title">{institutionName}</div>
           <div className="sidebar-brand-subtitle">Plataforma Educativa</div>
         </div>
       </div>
 
       <nav className="sidebar-nav">
         {sections.map((section) => {
-          const items = MENU.filter((m) => m.section === section);
+          const items = visibleMenu.filter((m) => m.section === section);
           if (items.length === 0) return null;
           return (
             <div key={section} className="sidebar-section">
