@@ -5,15 +5,18 @@ import { v2 as cloudinary } from 'cloudinary';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import { photoPublicId } from '../../config/storage';
-import { INSTITUTION } from '../../config/institution';
+import { photoPublicId, STORAGE_FOLDER } from '../../config/storage';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class PdfService {
   private readonly PAGE_WIDTH = 595.28;
   private readonly PAGE_HEIGHT = 841.89;
 
-  constructor(private config: ConfigService) {
+  constructor(
+    private config: ConfigService,
+    private settings: SettingsService,
+  ) {
     cloudinary.config({
       cloud_name: this.config.get('CLOUDINARY_CLOUD_NAME'),
       api_key: this.config.get('CLOUDINARY_API_KEY'),
@@ -26,6 +29,20 @@ export class PdfService {
       const p = path.join(process.cwd(), 'assets', file);
       return fs.existsSync(p) ? fs.readFileSync(p) : null;
     } catch { return null; }
+  }
+
+  /** Carga logo desde Cloudinary o fallback a archivo local */
+  private async loadDynamicLogo(publicId: string, fallbackFile: string): Promise<Buffer | null> {
+    if (publicId) {
+      try {
+        // Construir el publicId completo con el folder
+        const fullPublicId = `${STORAGE_FOLDER}/${publicId}`;
+        const url = cloudinary.url(fullPublicId, { width: 200, height: 200, crop: 'limit' });
+        const res = await axios.get(url, { responseType: 'arraybuffer' });
+        return Buffer.from(res.data);
+      } catch {}
+    }
+    return this.loadLogo(fallbackFile);
   }
 
   // Tabla Code-39 (dígitos, letras y * de inicio/fin)
@@ -50,15 +67,18 @@ export class PdfService {
       if (!pattern) continue;
       for (let i = 0; i < 9; i++) {
         const w = pattern[i] === '1' ? wide : narrow;
-        if (i % 2 === 0) doc.rect(cx, y, w, height).fill('#111827'); // barra
-        cx += w; // espacio
+        if (i % 2 === 0) doc.rect(cx, y, w, height).fill('#111827');
+        cx += w;
       }
-      cx += narrow; // separación entre caracteres
+      cx += narrow;
     }
   }
 
   async generateStudentRecord(student: any, enrollment: any): Promise<Buffer> {
     const photoBuffer = await this.getPhoto43(student);
+    const inst = await this.settings.getMerged();
+    const logoMain = await this.loadDynamicLogo(inst['logo.mainPublicId'], 'logo-cepu.png');
+    const logoSecond = await this.loadDynamicLogo(inst['logo.secondPublicId'], 'logo-uns.png');
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', margin: 0 });
@@ -69,7 +89,7 @@ export class PdfService {
 
       const halfHeight = this.PAGE_HEIGHT / 2;
 
-      this.drawRecord(doc, student, enrollment, 0, halfHeight, photoBuffer);
+      this.drawRecord(doc, student, enrollment, 0, halfHeight, photoBuffer, inst, logoMain, logoSecond);
 
       doc.save();
       doc.moveTo(0, halfHeight)
@@ -80,14 +100,17 @@ export class PdfService {
         .stroke();
       doc.restore();
 
-      this.drawRecord(doc, student, enrollment, halfHeight, halfHeight, photoBuffer);
+      this.drawRecord(doc, student, enrollment, halfHeight, halfHeight, photoBuffer, inst, logoMain, logoSecond);
 
       doc.end();
     });
   }
 
   async generatePaymentReceipt(payment: any): Promise<Buffer> {
-    const logoCepu = this.loadLogo('logo-cepu.png');
+    const inst = await this.settings.getMerged();
+    const logoMain = await this.loadDynamicLogo(inst['logo.mainPublicId'], 'logo-cepu.png');
+    const logoSecond = await this.loadDynamicLogo(inst['logo.secondPublicId'], 'logo-uns.png');
+
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A5', margin: 40 });
       const chunks: Buffer[] = [];
@@ -98,11 +121,14 @@ export class PdfService {
       const e = payment.enrollment;
       const right = 420 - 40;
 
-      // ===== Encabezado =====
-      if (logoCepu) { try { doc.image(logoCepu, 40, 40, { fit: [46, 46] }); } catch {} }
-      doc.font('Helvetica-Bold').fontSize(13).fillColor('#0E7DC2').text(INSTITUTION.name, 96, 46, { width: right - 96 });
-      doc.font('Helvetica').fontSize(8).fillColor('#374151').text(INSTITUTION.tagline, 96, 62, { width: right - 96 });
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827').text(`RECIBO N° ${payment.id.slice(0, 8).toUpperCase()}`, 96, 76, { width: right - 96 });
+      // ===== Encabezado con dos logos =====
+      if (logoSecond) { try { doc.image(logoSecond, 40, 40, { fit: [46, 46] }); } catch {} }
+      if (logoMain) { try { doc.image(logoMain, right - 46, 40, { fit: [46, 46] }); } catch {} }
+      
+      const centerX = (40 + right) / 2;
+      doc.font('Helvetica-Bold').fontSize(13).fillColor('#0E7DC2').text(inst['institution.name'], 40, 46, { width: right - 40, align: 'center' });
+      doc.font('Helvetica').fontSize(8).fillColor('#374151').text(inst['institution.tagline'], 40, 62, { width: right - 40, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827').text(`RECIBO N° ${payment.id.slice(0, 8).toUpperCase()}`, 40, 76, { width: right - 40, align: 'center' });
 
       doc.moveTo(40, 96).lineTo(right, 96).strokeColor('#0E7DC2').lineWidth(1.2).stroke();
 
@@ -153,8 +179,9 @@ export class PdfService {
   }
 
   async generateStudentCard(student: any, enrollment: any): Promise<Buffer> {
-    const logoCepu = this.loadLogo('logo-cepu.png');
-    const logoUns = this.loadLogo('logo-uns.png');
+    const inst = await this.settings.getMerged();
+    const logoMain = await this.loadDynamicLogo(inst['logo.mainPublicId'], 'logo-cepu.png');
+    const logoSecond = await this.loadDynamicLogo(inst['logo.secondPublicId'], 'logo-uns.png');
 
     let photoBuffer: Buffer | null = null;
     if (student.dni) {
@@ -187,9 +214,9 @@ export class PdfService {
 
       // ===== Franja superior celeste + marca central =====
       doc.rect(8, 8, W - 16, 44).fill('#EAF4FB');
-      if (logoUns) { try { doc.image(logoUns, 12, 13, { fit: [30, 30] }); } catch {} }
-      if (logoCepu) { try { doc.image(logoCepu, W - 42, 13, { fit: [30, 30] }); } catch {} }
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#0A5A8C').text(INSTITUTION.name, 0, 17, { width: W, align: 'center' });
+      if (logoSecond) { try { doc.image(logoSecond, 12, 13, { fit: [30, 30] }); } catch {} }
+      if (logoMain) { try { doc.image(logoMain, W - 42, 13, { fit: [30, 30] }); } catch {} }
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#0A5A8C').text(inst['app.name'], 0, 17, { width: W, align: 'center' });
       doc.font('Helvetica').fontSize(6.5).fillColor('#B78900').text('CARNÉ ESTUDIANTIL', 0, 29, { width: W, align: 'center' });
       doc.rect(8, 52, W - 16, 2).fill('#FFC621');
 
@@ -199,8 +226,8 @@ export class PdfService {
       doc.font('Helvetica-Bold').fontSize(7).fillColor('#0E7DC2').text('TURNO:', 0, 79, { width: W, align: 'center' });
       doc.font('Helvetica-Bold').fontSize(9).fillColor('#111827').text(turno, 0, 88, { width: W, align: 'center' });
 
-      // ===== CEPU + período =====
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#0E7DC2').text(`${INSTITUTION.shortName} ${periodLabel}`, 0, 99, { width: W, align: 'center' });
+      // ===== Institución + período =====
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#0E7DC2').text(`${inst['institution.shortName']} ${periodLabel}`, 0, 99, { width: W, align: 'center' });
 
       // ===== Foto centrada con marco azul =====
       const pw = 86, ph = 115;
@@ -231,13 +258,10 @@ export class PdfService {
     });
   }
 
-  /**
-   * Pide a Cloudinary una versión recortada 4:3 centrada en el rostro.
-   * Si falla, cae a la imagen original.
-   */
   private async getPhoto43(student: any): Promise<Buffer | null> {
     if (student.dni) {
       try {
+        // Usar photoPublicId para respetar STORAGE_FOLDER
         const url43 = cloudinary.url(photoPublicId(student.dni), {
           crop: 'fill', width: 400, height: 300, gravity: 'face',
         });
@@ -254,14 +278,19 @@ export class PdfService {
     return null;
   }
 
-  private drawRecord(doc: any, student: any, enrollment: any, offsetY: number, height: number, photoBuffer: Buffer | null) {
+  private drawRecord(doc: any, student: any, enrollment: any, offsetY: number, height: number, photoBuffer: Buffer | null, inst: Record<string, string>, logoMain: Buffer | null, logoSecond: Buffer | null) {
     const margin = 40;
     const rightEdge = this.PAGE_WIDTH - margin;
     const contentWidth = rightEdge - margin;
 
-    // ===== Encabezado centrado =====
+    // ===== Encabezado con logos a los lados =====
+    const logoSize = 40;
+    if (logoSecond) { try { doc.image(logoSecond, margin, offsetY + 20, { fit: [logoSize, logoSize] }); } catch {} }
+    if (logoMain) { try { doc.image(logoMain, rightEdge - logoSize, offsetY + 20, { fit: [logoSize, logoSize] }); } catch {} }
+
+    // Título centrado
     doc.font('Helvetica-Bold').fontSize(15).fillColor('#1e3a8a')
-      .text(`${INSTITUTION.appName} - ${INSTITUTION.shortName}`, 0, offsetY + 28, { align: 'center', width: this.PAGE_WIDTH });
+      .text(inst['institution.name'], 0, offsetY + 28, { align: 'center', width: this.PAGE_WIDTH });
     doc.font('Helvetica').fontSize(9).fillColor('#374151')
       .text('FICHA DE MATRÍCULA DEL ESTUDIANTE', 0, offsetY + 48, { align: 'center', width: this.PAGE_WIDTH });
 
@@ -271,12 +300,11 @@ export class PdfService {
     // ===== Foto 4:3 + nombre + datos personales =====
     const photoX = margin;
     const photoY = y + 20;
-    const photoW = 120;   // 4:3
-    const photoH = 90;    // 4:3
+    const photoW = 120;
+    const photoH = 90;
 
     if (photoBuffer) {
       try {
-        // La imagen ya viene recortada 4:3 por Cloudinary, se dibuja exacta
         doc.image(photoBuffer, photoX, photoY, { width: photoW, height: photoH });
       } catch {}
     }
@@ -319,7 +347,7 @@ export class PdfService {
     const footerY = offsetY + height - 34;
     doc.moveTo(margin, footerY).lineTo(rightEdge, footerY).strokeColor('#d1d5db').lineWidth(0.5).stroke();
     doc.font('Helvetica').fontSize(7).fillColor('#9ca3af')
-      .text(`Generado el ${new Date().toLocaleDateString()} | Documento: ${student.dni} | ${INSTITUTION.address} | ${INSTITUTION.phone}`, 0, footerY + 8, { align: 'center', width: this.PAGE_WIDTH });
+      .text(`Generado el ${new Date().toLocaleDateString()} | Dirección: ${inst['institution.address']} | Contacto: ${inst['institution.phone']}`, 0, footerY + 8, { align: 'center', width: this.PAGE_WIDTH });
   }
 
   private academicField(doc: any, label: string, value: string, x: number, y: number, width: number) {

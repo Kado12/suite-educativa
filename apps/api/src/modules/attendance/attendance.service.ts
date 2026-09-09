@@ -44,11 +44,6 @@ export class AttendanceService {
     const date = new Date(`${dateStr}T00:00:00Z`);
     const dow = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
 
-    const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const isPast = date < today;
-    const nextDay = addDays(date, 1);
-
     // Deducir período, semana y bloque desde la fecha
     const period = await this.prisma.period.findFirst({
       where: { startDate: { lte: date } },
@@ -88,9 +83,7 @@ export class AttendanceService {
     });
 
     // Días pasados: solo sesiones que ya existían ese día
-    const filtered = isPast
-      ? sessions.filter((s) => new Date(s.createdAt) < nextDay)
-      : sessions;
+    const filtered = sessions;
 
     // Clases con snapshot (quien dictó realmente) y attendance singular
     const classes = filtered.map((s) => {
@@ -124,8 +117,9 @@ export class AttendanceService {
 
   /**
    * Guardar asistencia del día (upsert por sesión+fecha)
+   * Ahora acepta overrides de docente y curso para snapshots históricos
    */
-  async saveDaily(dateStr: string, records: { sessionId: string; status: AttendanceStatus; lateMinutes?: number }[]) {
+  async saveDaily(dateStr: string, records: { sessionId: string; status: AttendanceStatus; lateMinutes?: number; teacherProfileId?: string | null; courseId?: string | null }[]) {
     const date = parseDate(dateStr);
     const dow = date.getUTCDay();
     if (dow < 1 || dow > 5) throw new BadRequestException('No se puede registrar asistencia en fin de semana');
@@ -153,13 +147,26 @@ export class AttendanceService {
     for (const r of records) {
       const sess = byId.get(r.sessionId);
       const late = r.status === AttendanceStatus.ABSENT ? 0 : (r.lateMinutes || 0);
+      
+      // Snapshot: override del frontend > sesión actual
+      const teacherSnap = r.teacherProfileId !== undefined ? r.teacherProfileId : (sess?.teacherProfileId || null);
+      const courseSnap = r.courseId !== undefined ? r.courseId : (sess?.courseId || null);
+
       await this.prisma.attendanceRecord.upsert({
         where: { sessionId_date: { sessionId: r.sessionId, date } },
-        update: { status: r.status, lateMinutes: late },
+        update: { 
+          status: r.status, 
+          lateMinutes: late,
+          teacherProfileId: teacherSnap,
+          courseId: courseSnap,
+        },
         create: { 
-          sessionId: r.sessionId, date, status: r.status, lateMinutes: late,
-          teacherProfileId: sess?.teacherProfileId || null,
-          courseId: sess?.courseId || null
+          sessionId: r.sessionId, 
+          date, 
+          status: r.status, 
+          lateMinutes: late,
+          teacherProfileId: teacherSnap,
+          courseId: courseSnap,
         },
       });
       saved++;

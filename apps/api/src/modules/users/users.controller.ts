@@ -22,6 +22,12 @@ export class UsersController {
   @Patch(':id') @RequirePermissions('users.update') @Auditable('UPDATE', 'User')
   update(@Param('id') id: string, @Body() b: any) { return this.svc.update(id, b); }
 
+  @Patch(':id/activate')
+  @RequirePermissions('users.update')
+  activate(@Param('id') id: string) {
+    return this.svc.activate(id);
+  }
+
   @Delete(':id') @RequirePermissions('users.delete') @Auditable('DELETE', 'User')
   remove(@Param('id') id: string, @Request() req) { return this.svc.remove(id, req.user.id); }
 }
