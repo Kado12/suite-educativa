@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Input, Select } from '@suite/ui';
+import { Card, Button, Input, Select, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { attendanceService } from '../../../api/attendance.service';
 import { academicService } from '../../../api/academic.service';
+import { peopleService } from '../../../api/people.service';
 
 interface Mark { status: 'PRESENT' | 'ABSENT'; lateMinutes: number; }
+interface RowSelection { teacherId: string; courseId: string; }
 
 const todayStr = () => {
   const d = new Date();
@@ -16,13 +18,23 @@ export const DailyTab: React.FC = () => {
   const { success, error } = useToast();
   const [date, setDate] = useState(todayStr());
   const [sedes, setSedes] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [filterSede, setFilterSede] = useState('');
   const [data, setData] = useState<any | null>(null);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [rowSel, setRowSel] = useState<Record<string, RowSelection>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { academicService.listSedes().then(setSedes); }, []);
+  useEffect(() => {
+    academicService.listSedes().then(setSedes);
+    peopleService.listTeachers().then(setTeachers);
+    academicService.listAreas().then((areas) => {
+      const allCourses = areas.flatMap((a: any) => a.courses.map((c: any) => ({ ...c, areaName: a.name })));
+      setCourses(allCourses);
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!date) return;
@@ -31,10 +43,17 @@ export const DailyTab: React.FC = () => {
       const res = await attendanceService.getDaily(date, filterSede || undefined);
       setData(res);
       const init: Record<string, Mark> = {};
+      const initSel: Record<string, RowSelection> = {};
       for (const c of res.classes) {
         if (c.attendance) init[c.id] = { status: c.attendance.status, lateMinutes: c.attendance.lateMinutes || 0 };
+        // Inicializar con el snapshot si existe, sino con los valores actuales
+        initSel[c.id] = {
+          teacherId: c.teacherProfile?.id || '',
+          courseId: c.course?.id || '',
+        };
       }
       setMarks(init);
+      setRowSel(initSel);
     } catch (err: any) {
       error(err.response?.data?.message || 'Error al cargar el día');
       setData(null);
@@ -61,7 +80,13 @@ export const DailyTab: React.FC = () => {
     if (!data) return;
     const records = Object.entries(marks)
       .filter(([id]) => data.classes.some((c: any) => c.id === id))
-      .map(([sessionId, m]) => ({ sessionId, status: m.status, lateMinutes: m.status === 'PRESENT' ? m.lateMinutes : 0 }));
+      .map(([sessionId, m]) => ({
+        sessionId,
+        status: m.status,
+        lateMinutes: m.status === 'PRESENT' ? m.lateMinutes : 0,
+        teacherProfileId: rowSel[sessionId]?.teacherId || null,
+        courseId: rowSel[sessionId]?.courseId || null,
+      }));
     if (records.length === 0) { error('No hay nada que guardar'); return; }
     setSaving(true);
     try {
@@ -73,6 +98,16 @@ export const DailyTab: React.FC = () => {
   };
 
   const markedCount = data ? data.classes.filter((c: any) => marks[c.id]).length : 0;
+
+  const teacherOptions = teachers.map((t: any) => ({
+    value: t.teacherProfile.id,
+    label: `${t.lastName}, ${t.firstName}`,
+  }));
+
+  const courseOptions = courses.map((c: any) => ({
+    value: c.id,
+    label: c.name,
+  }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -112,14 +147,37 @@ export const DailyTab: React.FC = () => {
         <Card className="p-0">
           <div className="table-container" style={{ border: 'none' }}>
             <table className="table">
-              <thead><tr><th>Docente</th><th>Curso</th><th>Sección</th><th>Sede</th><th>Estado</th><th>Tardanza (min)</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Docente</th>
+                  <th>Curso</th>
+                  <th>Sección</th>
+                  <th>Sede</th>
+                  <th>Estado</th>
+                  <th>Tardanza (min)</th>
+                </tr>
+              </thead>
               <tbody>
                 {data.classes.map((c: any) => {
                   const m = marks[c.id];
+                  const sel = rowSel[c.id];
                   return (
                     <tr key={c.id}>
-                      <td><strong>{c.teacherProfile.person.lastName}, {c.teacherProfile.person.firstName}</strong></td>
-                      <td>{c.course.name}</td>
+                      <td style={{ minWidth: 200 }}>
+                        <SearchableSelect
+                          value={sel?.teacherId || ''}
+                          onChange={(v) => setRowSel((p) => ({ ...p, [c.id]: { ...p[c.id], teacherId: v, courseId: p[c.id]?.courseId || c.course?.id || '' } }))}
+                          options={teacherOptions}
+                          placeholder="Seleccionar docente..."
+                        />
+                      </td>
+                      <td style={{ minWidth: 180 }}>
+                        <Select
+                          value={sel?.courseId || ''}
+                          onChange={(e) => setRowSel((p) => ({ ...p, [c.id]: { teacherId: p[c.id]?.teacherId || c.teacherProfile?.id || '', courseId: e.target.value } }))}
+                          options={[{ value: '', label: 'Seleccionar...' }, ...courseOptions]}
+                        />
+                      </td>
                       <td>{c.section.name}</td>
                       <td>{c.section.classroom.sede.name}</td>
                       <td>
