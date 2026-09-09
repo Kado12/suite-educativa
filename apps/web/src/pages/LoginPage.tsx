@@ -6,10 +6,14 @@ import {
   CalendarDaysIcon,
   DocumentChartBarIcon,
   ExclamationCircleIcon,
+  EnvelopeIcon,
+  CheckIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { APP_NAME } from '@suite/shared';
+import { Input } from '@suite/ui';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -86,27 +90,28 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div>
-              <label className="input-label">Email</label>
-              <input
-                type="email"
-                className="input"
+              <Input 
+                label="Email" 
+                icon={<EnvelopeIcon />} 
+                rightIcon={<CheckIcon />}
+                placeholder="admin@suite.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@suite.edu"
                 required
                 autoFocus
               />
             </div>
 
             <div>
-              <label className="input-label">Contraseña</label>
-              <input
-                type="password"
-                className="input"
+              <Input 
+                label="Contraseña" 
+                icon={<LockClosedIcon />} 
+                rightIcon={<CheckIcon />}
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 required
+                type="password"
               />
             </div>
 

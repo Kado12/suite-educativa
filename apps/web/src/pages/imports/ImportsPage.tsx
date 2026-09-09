@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Select } from '@suite/ui';
+import { Card, Button, Select, FileInput } from '@suite/ui';
 import { useToast } from '../../context/ToastContext';
 import { importsService } from '../../api/imports.service';
 import { academicService } from '../../api/academic.service';
@@ -69,7 +69,7 @@ export const ImportsPage: React.FC = () => {
       </div>
 
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, alignItems: 'end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'start' }}>
           <Select label="Tipo" value={type} onChange={(e) => { setType(e.target.value); setResult(null); }} options={TYPES} />
 
           {type === 'horario' && (
@@ -82,11 +82,14 @@ export const ImportsPage: React.FC = () => {
                 options={[{ value: '', label: 'Todas las sedes' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]} />
             </>
           )}
-
-          <div>
-            <label className="input-label">Archivo Excel</label>
-            <input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] || null)} className="input" />
-          </div>
+          <FileInput
+            label="Archivo Excel"
+            accept=".xlsx,.xls"
+            value={file}
+            onChange={setFile}
+            hint="Sube tu archivo Excel con los datos a importar"
+            maxSizeMB={10}
+          />
           <div style={{ display: 'flex', gap: 8 }}>
             <Button onClick={handleImport} isLoading={uploading}>Importar</Button>
             <Button variant="secondary" onClick={() => importsService.downloadTemplate(type)}>Plantilla</Button>
