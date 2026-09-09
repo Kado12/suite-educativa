@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select } from '@suite/ui';
-import { PhotoIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../../../context/ToastContext';
 import { peopleService } from '../../../api/people.service';
 import { uploadService } from '../../../api/upload.service';
@@ -22,11 +22,15 @@ export const EditPersonalModal: React.FC<Props> = ({ isOpen, student, onClose, o
   useEffect(() => {
     if (student) {
       setForm({
-        firstName: student.firstName, lastName: student.lastName,
-        docType: student.docType || 'DNI', dni: student.dni || '',
-        phone: student.phone || '', email: student.email || '',
+        firstName: student.firstName, 
+        lastName: student.lastName,
+        docType: student.docType || 'DNI', 
+        dni: student.dni || '',
+        phone: student.phone || '', 
+        email: student.email || '',
         birthDate: student.birthDate ? student.birthDate.split('T')[0] : '',
-        gender: student.gender || '', address: student.address || '',
+        gender: student.gender || '', 
+        address: student.address || '',
       });
       setPreviewUrl(student.photoUrl || null);
       setPendingPhoto(null);
@@ -45,13 +49,21 @@ export const EditPersonalModal: React.FC<Props> = ({ isOpen, student, onClose, o
   };
 
   const handleSave = async () => {
-    if (!form.firstName || !form.lastName) { error('Nombres y apellidos obligatorios'); return; }
-    if (form.docType === 'DNI' && !/^\d{8}$/.test(form.dni)) { error('DNI debe tener 8 dígitos'); return; }
-    if (form.docType === 'CARNET' && !/^0\d{0,8}$/.test(form.dni)) { error('Carnet debe comenzar con 0'); return; }
+    if (!form.firstName || !form.lastName) { 
+      error('Nombres y apellidos obligatorios'); 
+      return; 
+    }
+    if (form.docType === 'DNI' && !/^\d{8}$/.test(form.dni)) { 
+      error('DNI debe tener 8 dígitos'); 
+      return; 
+    }
+    if (form.docType === 'CARNET' && !/^0\d{0,8}$/.test(form.dni)) { 
+      error('Carnet debe comenzar con 0'); 
+      return; 
+    }
 
     setSaving(true);
     try {
-      // 1. Si hay foto nueva, subirla PRIMERO y obtener su URL
       let photoUrlToSend: string | undefined;
       if (pendingPhoto) {
         const { oldPublicId, newPublicId } = await peopleService.getPhotoInfo(student.id, form.dni);
@@ -59,7 +71,6 @@ export const EditPersonalModal: React.FC<Props> = ({ isOpen, student, onClose, o
         photoUrlToSend = url;
       }
 
-      // 2. Guardar todo: datos + correo autogenerado + foto
       await peopleService.updateStudentFull(student.id, {
         ...form,
         email: autoEmail,
@@ -67,7 +78,7 @@ export const EditPersonalModal: React.FC<Props> = ({ isOpen, student, onClose, o
         birthDate: form.birthDate || undefined,
       });
 
-      success('Datos personales actualizados');
+      success('✅ Datos personales actualizados');
       onSaved();
       onClose();
     } catch (err: any) {
@@ -78,64 +89,155 @@ export const EditPersonalModal: React.FC<Props> = ({ isOpen, student, onClose, o
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar Datos Personales" size="lg">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Foto 16:9 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Editar datos personales" size="lg">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Foto */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{
-            width: 240, height: 135, borderRadius: 12, background: 'var(--color-neutral-100)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-            border: '2px dashed var(--color-neutral-300)', flexShrink: 0,
+            width: 200, 
+            height: 200, 
+            borderRadius: 12, 
+            background: 'var(--color-neutral-100)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            overflow: 'hidden',
+            border: '2px dashed var(--color-neutral-300)', 
+            flexShrink: 0,
           }}>
             {previewUrl ? (
               <img src={previewUrl} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <PhotoIcon style={{ width: 32, height: 32, color: 'var(--color-neutral-400)' }} />
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-400)' }}>Sin foto · 16:9</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <PhotoIcon style={{ width: 48, height: 48, color: 'var(--color-neutral-400)' }} />
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-400)' }}>Sin foto</span>
               </div>
             )}
           </div>
           <div>
-            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+            <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <PhotoIcon style={{ width: 18, height: 18 }} />
               {previewUrl ? 'Cambiar foto' : 'Subir foto'}
               <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: 'none' }} />
             </label>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 4 }}>
-              Se guarda con el N° de documento.
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 8, maxWidth: 200 }}>
+              La foto se guarda asociada al número de documento del alumno.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Input label="Nombres" value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-          <Input label="Apellidos" value={form.lastName || ''} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12 }}>
-          <Select label="Tipo doc." value={form.docType || 'DNI'} onChange={(e) => setForm({ ...form, docType: e.target.value })}
-            options={[{ value: 'DNI', label: 'DNI' }, { value: 'CARNET', label: 'Carnet Ext.' }]} />
-          <Input label="N° de documento" value={form.dni || ''} onChange={(e) => setForm({ ...form, dni: e.target.value })} required />
-        </div>
-
+        {/* Datos personales */}
         <div>
-          <label className="input-label">Correo (autogenerado)</label>
-          <input className="input" value={autoEmail} readOnly style={{ background: 'var(--color-neutral-100)', color: 'var(--color-neutral-600)' }} />
+          <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 12, color: 'var(--color-neutral-700)' }}>
+            Información personal
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input 
+              label="Nombres" 
+              value={form.firstName || ''} 
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })} 
+              required
+              icon={<UserIcon />}
+              placeholder="Ej: Juan Carlos"
+            />
+            <Input 
+              label="Apellidos" 
+              value={form.lastName || ''} 
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })} 
+              required
+              icon={<UserIcon />}
+              placeholder="Ej: Pérez García"
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, marginTop: 12 }}>
+            <Select 
+              label="Tipo doc." 
+              value={form.docType || 'DNI'} 
+              onChange={(e) => setForm({ ...form, docType: e.target.value })}
+              options={[{ value: 'DNI', label: 'DNI' }, { value: 'CARNET', label: 'Carnet Ext.' }]} 
+            />
+            <Input 
+              label="N° de documento" 
+              value={form.dni || ''} 
+              onChange={(e) => setForm({ ...form, dni: e.target.value })} 
+              required
+              icon={<UserIcon />}
+              placeholder={form.docType === 'DNI' ? '8 dígitos' : 'Comienza con 0'}
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label className="input-label">Correo electrónico (autogenerado)</label>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8,
+              padding: '8px 12px',
+              background: 'var(--color-neutral-100)',
+              borderRadius: 8,
+              fontSize: 'var(--text-sm)',
+              color: 'var(--color-neutral-600)'
+            }}>
+              <EnvelopeIcon style={{ width: 16, height: 16 }} />
+              {autoEmail || 'Completa nombre y DNI para generar'}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Input label="Celular" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Input label="Fecha de nacimiento" type="date" value={form.birthDate || ''} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+        {/* Contacto */}
+        <div>
+          <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 12, color: 'var(--color-neutral-700)' }}>
+            Información de contacto
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input 
+              label="Celular" 
+              value={form.phone || ''} 
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              icon={<PhoneIcon />}
+              placeholder="987654321"
+            />
+            <Input 
+              label="Fecha de nacimiento" 
+              type="date" 
+              value={form.birthDate || ''} 
+              onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+              icon={<CalendarIcon />}
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <Select 
+              label="Género" 
+              value={form.gender || ''} 
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              options={[
+                { value: '', label: 'Seleccionar' }, 
+                { value: 'M', label: 'Masculino' }, 
+                { value: 'F', label: 'Femenino' }, 
+                { value: 'O', label: 'Otro' }
+              ]} 
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <Input 
+              label="Dirección" 
+              value={form.address || ''} 
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              icon={<MapPinIcon />}
+              placeholder="Av. Principal 123"
+            />
+          </div>
         </div>
 
-        <Select label="Género" value={form.gender || ''} onChange={(e) => setForm({ ...form, gender: e.target.value })}
-          options={[{ value: '', label: 'Seleccionar' }, { value: 'M', label: 'Masculino' }, { value: 'F', label: 'Femenino' }, { value: 'O', label: 'Otro' }]} />
-
-        <Input label="Dirección" value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-
+        {/* Acciones */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSave} isLoading={saving}>Guardar cambios</Button>
+          <Button onClick={handleSave} isLoading={saving} loadingText="Guardando...">
+            Guardar cambios
+          </Button>
         </div>
       </div>
     </Modal>

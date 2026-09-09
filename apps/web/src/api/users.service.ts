@@ -17,4 +17,5 @@ export const usersService = {
   create: (d: any) => api.post('/api/users', d).then((r) => r.data),
   update: (id: string, d: any) => api.patch(`/api/users/${id}`, d).then((r) => r.data),
   remove: (id: string) => api.delete(`/api/users/${id}`).then((r) => r.data),
+  activate: (id: string) => api.patch(`/api/users/${id}/activate`).then((r) => r.data),
 };

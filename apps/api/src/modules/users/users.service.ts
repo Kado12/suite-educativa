@@ -54,4 +54,15 @@ export class UsersService {
     if (!user) throw new NotFoundException('Usuario no encontrado');
     return this.prisma.user.update({ where: { id }, data: { isActive: false } });
   }
+
+  async activate(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    if (user.isActive) throw new BadRequestException('El usuario ya está activo');
+    
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive: true },
+    });
+  }
 }
