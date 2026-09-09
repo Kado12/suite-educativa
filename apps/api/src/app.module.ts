@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,7 +17,6 @@ import { ImportsModule } from './modules/imports/imports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { AuditModule } from './modules/audit/audit.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { UploadModule } from './modules/upload/upload.module';
 import { PdfModule } from './modules/pdf/pdf.module';
@@ -26,6 +27,11 @@ import { SettingsModule } from './modules/settings/settings.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // === RATE LIMITING: 100 requests por minuto por IP ===
+    ThrottlerModule.forRoot([{
+      ttl: 60000,  // 60 segundos
+      limit: 100,  // máximo 100 requests
+    }]),
     HealthModule,
     PrismaModule,
     AuthModule,
@@ -46,7 +52,8 @@ import { SettingsModule } from './modules/settings/settings.module';
     SettingsModule,
   ],
   providers: [
-    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor}
-  ]
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },  // ← Rate limiting global
+  ],
 })
 export class AppModule {}
