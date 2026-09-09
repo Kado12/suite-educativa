@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusIcon, TrashIcon, PencilIcon, ClockIcon, BuildingOfficeIcon, PowerIcon, ArrowDownTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { 
+  PlusIcon, TrashIcon, PencilIcon, ClockIcon, BuildingOfficeIcon, 
+  PowerIcon, ArrowDownTrayIcon, MagnifyingGlassIcon, XCircleIcon,
+  UserGroupIcon, MapPinIcon
+} from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, SearchableSelect, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { academicService } from '../../../api/academic.service';
@@ -76,44 +80,94 @@ export const SeccionesTab: React.FC = () => {
     }
   };
 
-  // ... resto de handlers (turno, sección, toggle, delete) igual que antes
-  const openCreateTurno = () => { setEditingTurno(null); setTurno({ name: '', slot1Start: '08:00', slot1End: '11:00', slot2Start: '11:00', slot2End: '14:00' }); setShowTurno(true); };
-  const openEditTurno = (t: any) => { setEditingTurno(t); setTurno({ name: t.name, slot1Start: t.slot1Start, slot1End: t.slot1End, slot2Start: t.slot2Start, slot2End: t.slot2End }); setShowTurno(true); };
+  const openCreateTurno = () => { 
+    setEditingTurno(null); 
+    setTurno({ name: '', slot1Start: '08:00', slot1End: '11:00', slot2Start: '11:00', slot2End: '14:00' }); 
+    setShowTurno(true); 
+  };
+  const openEditTurno = (t: any) => { 
+    setEditingTurno(t); 
+    setTurno({ 
+      name: t.name, 
+      slot1Start: t.slot1Start, 
+      slot1End: t.slot1End, 
+      slot2Start: t.slot2Start, 
+      slot2End: t.slot2End 
+    }); 
+    setShowTurno(true); 
+  };
 
   const saveTurno = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
-      if (editingTurno) { await academicService.updateTurno(editingTurno.id, turno); success('Turno actualizado'); }
-      else { await academicService.createTurno(turno); success('Turno creado'); }
+      if (editingTurno) { 
+        await academicService.updateTurno(editingTurno.id, turno); 
+        success('✅ Turno actualizado'); 
+      } else { 
+        await academicService.createTurno(turno); 
+        success('✅ Turno creado'); 
+      }
       setShowTurno(false); load();
-    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
-    finally { setSaving(false); }
+    } catch (err: any) { 
+      error(err.response?.data?.message || 'Error'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
-  const openCreateSec = () => { setEditingSec(null); setSec({ classroomId: '', turnoId: '', capacity: '25', enrollmentPriority: '0', name: '' }); setShowSec(true); };
-  const openEditSec = (s: any) => { setEditingSec(s); setSec({ classroomId: s.classroomId, turnoId: s.turnoId, capacity: String(s.capacity), enrollmentPriority: String(s.enrollmentPriority), name: s.name }); setShowSec(true); };
+  const openCreateSec = () => { 
+    setEditingSec(null); 
+    setSec({ classroomId: '', turnoId: '', capacity: '25', enrollmentPriority: '0', name: '' }); 
+    setShowSec(true); 
+  };
+  const openEditSec = (s: any) => { 
+    setEditingSec(s); 
+    setSec({ 
+      classroomId: s.classroomId, 
+      turnoId: s.turnoId, 
+      capacity: String(s.capacity), 
+      enrollmentPriority: String(s.enrollmentPriority), 
+      name: s.name 
+    }); 
+    setShowSec(true); 
+  };
 
   const saveSec = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
       if (editingSec) {
-        await academicService.updateSectionFull(editingSec.id, { name: sec.name, capacity: parseInt(sec.capacity), enrollmentPriority: parseInt(sec.enrollmentPriority) });
-        success('Sección actualizada');
+        await academicService.updateSectionFull(editingSec.id, { 
+          name: sec.name, 
+          capacity: parseInt(sec.capacity), 
+          enrollmentPriority: parseInt(sec.enrollmentPriority) 
+        });
+        success('✅ Sección actualizada');
       } else {
-        await academicService.createSection({ classroomId: sec.classroomId, turnoId: sec.turnoId, capacity: parseInt(sec.capacity), enrollmentPriority: parseInt(sec.enrollmentPriority), name: sec.name || undefined });
-        success('Sección creada');
+        await academicService.createSection({ 
+          classroomId: sec.classroomId, 
+          turnoId: sec.turnoId, 
+          capacity: parseInt(sec.capacity), 
+          enrollmentPriority: parseInt(sec.enrollmentPriority), 
+          name: sec.name || undefined 
+        });
+        success('✅ Sección creada');
       }
       setShowSec(false); load();
-    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
-    finally { setSaving(false); }
+    } catch (err: any) { 
+      error(err.response?.data?.message || 'Error'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   const toggleActive = async (s: any) => {
     try {
       await academicService.toggleSection(s.id);
-      success(s.isActive ? 'Sección desactivada' : 'Sección activada');
+      success(s.isActive ? '✅ Sección desactivada' : '✅ Sección activada');
       load();
-    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
+    } catch (err: any) { 
+      error(err.response?.data?.message || 'Error'); 
+    }
   };
 
   const handleDelete = async () => {
@@ -121,47 +175,96 @@ export const SeccionesTab: React.FC = () => {
     try {
       if (del.type === 'turno') await academicService.deleteTurno(del.id);
       else await academicService.deleteSection(del.id);
-      success('Eliminado'); setDel(null); load();
-    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
-    finally { setSaving(false); }
+      success('✅ Eliminado correctamente'); 
+      setDel(null); 
+      load();
+    } catch (err: any) { 
+      error(err.response?.data?.message || 'Error'); 
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Button variant="secondary" onClick={openCreateSec}><PlusIcon style={{ width: 16, height: 16 }} /> Sección</Button>
-        <Button onClick={openCreateTurno}><PlusIcon style={{ width: 16, height: 16 }} /> Turno</Button>
-      </div>
-
       {/* TURNOS */}
       <Card>
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-info-50)', color: 'var(--color-info-500)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ClockIcon style={{ width: 20, height: 20 }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ 
+              width: 44, 
+              height: 44, 
+              borderRadius: 12, 
+              background: 'linear-gradient(135deg, var(--color-info-50) 0%, var(--color-info-100) 100%)', 
+              color: 'var(--color-info-600)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <ClockIcon style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <h3 className="card-title">Turnos</h3>
-              <p className="card-subtitle" style={{ margin: 0 }}>{turnos.length} configurados</p>
+              <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, margin: 0, color: 'var(--color-neutral-900)' }}>
+                Turnos
+              </h3>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', margin: '2px 0 0' }}>
+                {turnos.length} configurados
+              </p>
             </div>
           </div>
+          <Button onClick={openCreateTurno} icon={<PlusIcon />}>
+            Nuevo turno
+          </Button>
         </div>
+
         {turnos.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--color-neutral-400)', padding: 24 }}>Sin turnos configurados</p>
+          <div style={{ textAlign: 'center', color: 'var(--color-neutral-400)', padding: 32 }}>
+            <ClockIcon style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Sin turnos configurados</div>
+          </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {turnos.map((t) => (
-              <div key={t.id} style={{ padding: 16, background: 'var(--color-neutral-50)', borderRadius: 10, border: '1px solid var(--color-neutral-200)' }}>
+              <div 
+                key={t.id} 
+                style={{ 
+                  padding: 16, 
+                  background: 'var(--color-neutral-50)', 
+                  borderRadius: 10, 
+                  border: '1px solid var(--color-neutral-200)',
+                  transition: 'all 0.2s',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: 0 }}>{t.name}</h4>
-                  <div style={{ display: 'flex', gap: 2 }}>
-                    <button onClick={() => openEditTurno(t)} className="btn btn-ghost btn-icon"><PencilIcon style={{ width: 14, height: 14, color: 'var(--color-success-700)'  }} /></button>
-                    <button onClick={() => setDel({ type: 'turno', id: t.id, name: t.name })} className="btn btn-ghost btn-icon"><TrashIcon style={{ width: 14, height: 14, color: 'var(--color-danger-500)' }} /></button>
+                  <h4 style={{ fontSize: 'var(--text-base)', fontWeight: 700, margin: 0, color: 'var(--color-neutral-900)' }}>
+                    {t.name}
+                  </h4>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button 
+                      onClick={() => openEditTurno(t)} 
+                      className="btn btn-ghost btn-icon"
+                      style={{ color: 'var(--color-success-500)' }}
+                    >
+                      <PencilIcon style={{ width: 14, height: 14 }} />
+                    </button>
+                    <button 
+                      onClick={() => setDel({ type: 'turno', id: t.id, name: t.name })} 
+                      className="btn btn-ghost btn-icon"
+                      style={{ color: 'var(--color-danger-600)' }}
+                    >
+                      <TrashIcon style={{ width: 14, height: 14 }} />
+                    </button>
                   </div>
                 </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-600)' }}>
-                  <div style={{ marginBottom: 4 }}>Slot 1: <strong>{t.slot1Start} - {t.slot1End}</strong></div>
-                  <div>Slot 2: <strong>{t.slot2Start} - {t.slot2End}</strong></div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-neutral-600)' }}>
+                  <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ClockIcon style={{ width: 14, height: 14, color: 'var(--color-neutral-400)' }} />
+                    <span>Slot 1: <strong>{t.slot1Start} - {t.slot1End}</strong></span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ClockIcon style={{ width: 14, height: 14, color: 'var(--color-neutral-400)' }} />
+                    <span>Slot 2: <strong>{t.slot2Start} - {t.slot2End}</strong></span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -169,40 +272,75 @@ export const SeccionesTab: React.FC = () => {
         )}
       </Card>
 
-      {/* SECCIONES con búsqueda, paginación y alertas */}
+      {/* SECCIONES */}
       <Card>
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-success-50)', color: 'var(--color-success-500)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BuildingOfficeIcon style={{ width: 20, height: 20 }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ 
+              width: 44, 
+              height: 44, 
+              borderRadius: 12, 
+              background: 'linear-gradient(135deg, var(--color-success-50) 0%, var(--color-success-100) 100%)', 
+              color: 'var(--color-success-500)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <UserGroupIcon style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <h3 className="card-title">Secciones</h3>
-              <p className="card-subtitle" style={{ margin: 0 }}>{sections.filter((s) => s.isActive).length} activas de {sections.length}</p>
+              <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, margin: 0, color: 'var(--color-neutral-900)' }}>
+                Secciones
+              </h3>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', margin: '2px 0 0' }}>
+                {sections.filter((s) => s.isActive).length} activas de {sections.length}
+              </p>
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 280 }}>
-              <Input
-                placeholder="Buscar por sección, salón, sede..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Button variant="success" onClick={handleExport}>
-              <ArrowDownTrayIcon style={{ width: 16, height: 16 }} /> Exportar Excel
-            </Button>
-          </div>
+          <Button onClick={openCreateSec} icon={<PlusIcon />}>
+            Nueva sección
+          </Button>
         </div>
 
-        <div className="table-container" style={{ border: 'none', borderTop: '1px solid var(--color-neutral-100)' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <Input
+              placeholder="Buscar por sección, salón, sede..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={<MagnifyingGlassIcon />}
+            />
+          </div>
+          <Button 
+            variant="success" 
+            onClick={handleExport}
+            icon={<ArrowDownTrayIcon />}
+          >
+            Exportar Excel
+          </Button>
+          {search && (
+            <Button 
+              variant="ghost" 
+              onClick={() => setSearch('')}
+              icon={<XCircleIcon />}
+            >
+              Limpiar
+            </Button>
+          )}
+        </div>
+
+        <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>Sección</th><th>Salón</th><th>Sede</th><th>Turno</th>
+                <th>Sección</th>
+                <th>Salón</th>
+                <th>Sede</th>
+                <th>Turno</th>
                 <th style={{ textAlign: 'center' }}>Cupo</th>
                 <th style={{ textAlign: 'center' }}>Ocupación</th>
-                <th style={{ textAlign: 'center' }}>Estado</th><th></th>
+                <th style={{ textAlign: 'center' }}>Estado</th>
+                <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -212,35 +350,65 @@ export const SeccionesTab: React.FC = () => {
                 const occupancyColor = pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'success';
                 return (
                   <tr key={s.id} style={{ opacity: s.isActive ? 1 : 0.55 }}>
-                    <td><strong>{s.name}</strong></td>
-                    <td>{s.classroom.name}</td>
-                    <td>{s.classroom.sede.name}</td>
-                    <td><Badge color="primary">{s.turno.name}</Badge></td>
+                    <td>
+                      <strong style={{ color: 'var(--color-neutral-900)' }}>{s.name}</strong>
+                    </td>
+                    <td style={{ color: 'var(--color-neutral-600)' }}>{s.classroom.name}</td>
+                    <td style={{ color: 'var(--color-neutral-600)' }}>{s.classroom.sede.name}</td>
+                    <td>
+                      <Badge color="primary">{s.turno.name}</Badge>
+                    </td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{s.capacity}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <Badge color={occupancyColor}>{enrolled}/{s.capacity} ({pct}%)</Badge>
+                      <Badge color={occupancyColor}>
+                        {enrolled}/{s.capacity} ({pct}%)
+                      </Badge>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <Badge color={s.isActive ? 'success' : 'danger'}>{s.isActive ? 'Activa' : 'Inactiva'}</Badge>
+                      <Badge color={s.isActive ? 'success' : 'neutral'}>
+                        {s.isActive ? '● Activa' : '○ Inactiva'}
+                      </Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button onClick={() => toggleActive(s)} className="btn btn-ghost btn-icon" title={s.isActive ? 'Desactivar' : 'Activar'}>
-                        <PowerIcon style={{ width: 16, height: 16, color: s.isActive ? 'var(--color-extra-600)' : 'var(--color-neutral-400)' }} />
-                      </button>
-                      <button onClick={() => openEditSec(s)} className="btn btn-ghost btn-icon" title="Editar">
-                        <PencilIcon style={{ width: 16, height: 16, color: 'var(--color-success-700)'  }} />
-                      </button>
-                      <button onClick={() => setDel({ type: 'sec', id: s.id, name: s.name })} className="btn btn-ghost btn-icon" title="Eliminar">
-                        <TrashIcon style={{ width: 16, height: 16, color: 'var(--color-danger-500)' }} />
-                      </button>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => toggleActive(s)} 
+                          className="btn btn-ghost btn-icon" 
+                          title={s.isActive ? 'Desactivar' : 'Activar'}
+                          style={{ color: s.isActive ? 'var(--color-warning-600)' : 'var(--color-success-500)' }}
+                        >
+                          <PowerIcon style={{ width: 16, height: 16 }} />
+                        </button>
+                        <button 
+                          onClick={() => openEditSec(s)} 
+                          className="btn btn-ghost btn-icon" 
+                          title="Editar"
+                          style={{ color: 'var(--color-success-500)' }}
+                        >
+                          <PencilIcon style={{ width: 16, height: 16 }} />
+                        </button>
+                        <button 
+                          onClick={() => setDel({ type: 'sec', id: s.id, name: s.name })} 
+                          className="btn btn-ghost btn-icon" 
+                          title="Eliminar"
+                          style={{ color: 'var(--color-danger-600)' }}
+                        >
+                          <TrashIcon style={{ width: 16, height: 16 }} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {filteredSections.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--color-neutral-400)' }}>
-                  {search ? 'No se encontraron secciones' : 'Sin secciones'}
-                </td></tr>
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: 48, color: 'var(--color-neutral-400)' }}>
+                    <UserGroupIcon style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                      {search ? 'No se encontraron secciones' : 'Sin secciones registradas'}
+                    </div>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -257,34 +425,130 @@ export const SeccionesTab: React.FC = () => {
         )}
       </Card>
 
-      {/* Modals (igual que antes) */}
+      {/* Modal Turno */}
       <Modal isOpen={showTurno} onClose={() => setShowTurno(false)} title={editingTurno ? 'Editar turno' : 'Nuevo turno'}>
-        <form onSubmit={saveTurno} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input label="Nombre" value={turno.name} onChange={(e) => setTurno({ ...turno, name: e.target.value })} placeholder="Ej: Mañana" required />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Input label="Slot 1 inicio" type="time" value={turno.slot1Start} onChange={(e) => setTurno({ ...turno, slot1Start: e.target.value })} required />
-            <Input label="Slot 1 fin" type="time" value={turno.slot1End} onChange={(e) => setTurno({ ...turno, slot1End: e.target.value })} required />
-            <Input label="Slot 2 inicio" type="time" value={turno.slot2Start} onChange={(e) => setTurno({ ...turno, slot2Start: e.target.value })} required />
-            <Input label="Slot 2 fin" type="time" value={turno.slot2End} onChange={(e) => setTurno({ ...turno, slot2End: e.target.value })} required />
+        <form onSubmit={saveTurno} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input 
+            label="Nombre del turno" 
+            value={turno.name} 
+            onChange={(e) => setTurno({ ...turno, name: e.target.value })} 
+            placeholder="Ej: Mañana" 
+            required
+            icon={<ClockIcon />}
+          />
+          <div>
+            <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 12, color: 'var(--color-neutral-700)' }}>
+              Slot 1
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Input 
+                label="Inicio" 
+                type="time" 
+                value={turno.slot1Start} 
+                onChange={(e) => setTurno({ ...turno, slot1Start: e.target.value })} 
+                required 
+              />
+              <Input 
+                label="Fin" 
+                type="time" 
+                value={turno.slot1End} 
+                onChange={(e) => setTurno({ ...turno, slot1End: e.target.value })} 
+                required 
+              />
+            </div>
           </div>
-          <Button type="submit" isLoading={saving}>{editingTurno ? 'Guardar cambios' : 'Crear turno'}</Button>
+          <div>
+            <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 12, color: 'var(--color-neutral-700)' }}>
+              Slot 2
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Input 
+                label="Inicio" 
+                type="time" 
+                value={turno.slot2Start} 
+                onChange={(e) => setTurno({ ...turno, slot2Start: e.target.value })} 
+                required 
+              />
+              <Input 
+                label="Fin" 
+                type="time" 
+                value={turno.slot2End} 
+                onChange={(e) => setTurno({ ...turno, slot2End: e.target.value })} 
+                required 
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            <Button variant="secondary" onClick={() => setShowTurno(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={saving} loadingText="Guardando...">
+              {editingTurno ? 'Guardar cambios' : 'Crear turno'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
+      {/* Modal Sección */}
       <Modal isOpen={showSec} onClose={() => setShowSec(false)} title={editingSec ? 'Editar sección' : 'Nueva sección'}>
-        <form onSubmit={saveSec} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input label="Nombre (opcional, se autogenera)" value={sec.name} onChange={(e) => setSec({ ...sec, name: e.target.value })} placeholder="Ej: A11 - M" />
-          <SearchableSelect label="Salón" value={sec.classroomId} onChange={(v) => setSec({ ...sec, classroomId: v })} options={classroomOptions} placeholder="Escribe para buscar salón..." required />
-          <Select label="Turno" value={sec.turnoId} onChange={(e) => setSec({ ...sec, turnoId: e.target.value })} options={[{ value: '', label: 'Selecciona turno' }, ...turnos.map((t) => ({ value: t.id, label: t.name }))]} required />
+        <form onSubmit={saveSec} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input 
+            label="Nombre (opcional, se autogenera)" 
+            value={sec.name} 
+            onChange={(e) => setSec({ ...sec, name: e.target.value })} 
+            placeholder="Ej: A11 - M"
+            icon={<UserGroupIcon />}
+          />
+          <SearchableSelect 
+            label="Salón" 
+            value={sec.classroomId} 
+            onChange={(v) => setSec({ ...sec, classroomId: v })} 
+            options={classroomOptions} 
+            placeholder="Escribe para buscar salón..." 
+            required 
+          />
+          <Select 
+            label="Turno" 
+            value={sec.turnoId} 
+            onChange={(e) => setSec({ ...sec, turnoId: e.target.value })} 
+            options={[{ value: '', label: 'Selecciona turno' }, ...turnos.map((t) => ({ value: t.id, label: t.name }))]} 
+            required 
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Input label="Cupo máximo" type="number" min={1} value={sec.capacity} onChange={(e) => setSec({ ...sec, capacity: e.target.value })} required />
-            <Input label="Prioridad" type="number" min={0} value={sec.enrollmentPriority} onChange={(e) => setSec({ ...sec, enrollmentPriority: e.target.value })} required />
+            <Input 
+              label="Cupo máximo" 
+              type="number" 
+              min={1} 
+              value={sec.capacity} 
+              onChange={(e) => setSec({ ...sec, capacity: e.target.value })} 
+              required
+              icon={<UserGroupIcon />}
+            />
+            <Input 
+              label="Prioridad de inscripción" 
+              type="number" 
+              min={0} 
+              value={sec.enrollmentPriority} 
+              onChange={(e) => setSec({ ...sec, enrollmentPriority: e.target.value })} 
+              required
+              hint="Mayor número = más prioridad"
+            />
           </div>
-          <Button type="submit" isLoading={saving}>{editingSec ? 'Guardar cambios' : 'Crear sección'}</Button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            <Button variant="secondary" onClick={() => setShowSec(false)}>Cancelar</Button>
+            <Button type="submit" isLoading={saving} loadingText="Guardando...">
+              {editingSec ? 'Guardar cambios' : 'Crear sección'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
-      <ConfirmModal isOpen={!!del} onClose={() => setDel(null)} onConfirm={handleDelete} title={`Eliminar ${del?.type === 'turno' ? 'turno' : 'sección'}`} message={`¿Eliminar "${del?.name}"? Esta acción no se puede deshacer.`} isLoading={saving} />
+      <ConfirmModal 
+        isOpen={!!del} 
+        onClose={() => setDel(null)} 
+        onConfirm={handleDelete} 
+        title={`Eliminar ${del?.type === 'turno' ? 'turno' : 'sección'}`} 
+        message={`¿Eliminar "${del?.name}"?\n\nEsta acción no se puede deshacer.${del?.type === 'sec' ? '\n\nSolo es posible si no tiene matrículas activas.' : ''}`} 
+        isLoading={saving} 
+      />
     </div>
   );
 };
