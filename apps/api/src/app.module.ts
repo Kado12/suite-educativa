@@ -27,10 +27,9 @@ import { SettingsModule } from './modules/settings/settings.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    // === RATE LIMITING: 100 requests por minuto por IP ===
     ThrottlerModule.forRoot([{
-      ttl: 60000,  // 60 segundos
-      limit: 100,  // máximo 100 requests
+      ttl: 60000,
+      limit: 100,
     }]),
     HealthModule,
     PrismaModule,
@@ -53,7 +52,7 @@ import { SettingsModule } from './modules/settings/settings.module';
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },  // ← Rate limiting global
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
