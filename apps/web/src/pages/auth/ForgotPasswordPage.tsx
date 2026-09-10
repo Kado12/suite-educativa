@@ -48,7 +48,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
           <div>
             <div className="auth-brand-name">{institutionName}</div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-400)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent-600)', marginTop: 4 }}>
               Recuperación de acceso
             </div>
           </div>
@@ -66,11 +66,11 @@ export const ForgotPasswordPage: React.FC = () => {
           marginTop: 'auto',
           paddingTop: 32,
           padding: 16,
-          background: 'var(--color-info-50)',
-          border: '1px solid var(--color-info-200)',
+          background: 'var(--color-primary-50)',
+          border: '1px solid var(--color-primary-800)',
           borderRadius: 8,
           fontSize: 'var(--text-sm)',
-          color: 'var(--color-info-800)',
+          color: 'var(--color-primary-700)',
           display: 'flex',
           alignItems: 'flex-start',
           gap: 10,

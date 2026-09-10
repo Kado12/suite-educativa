@@ -83,7 +83,7 @@ export const LoginPage: React.FC = () => {
             <div className="auth-brand-name">{institutionName}</div>
             <div style={{
               fontSize: 'var(--text-xs)',
-              color: 'var(--color-neutral-400)',
+              color: 'var(--color-accent-600)',
               marginTop: 4
             }}>
               {tagline}
