@@ -59,7 +59,8 @@ export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
   INFORMATICO: [
     'dashboard.view',
     'users.view',
-    //! Importante: NO tiene users.create/update/delete
+    'users.update',
+    //! Importante: NO tiene users.create/delete
     'academic.view',
     'academic.manage',
     'enrollment.view',

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
+import {
   PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, ClockIcon,
   UserIcon, MagnifyingGlassIcon, EnvelopeIcon, KeyIcon, UserGroupIcon,
   ChartBarIcon, CalendarIcon, GlobeAltIcon, XCircleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  BellAlertIcon
 } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination } from '@suite/ui';
 import { ROLE_LABELS, type AppRole } from '@suite/shared';
@@ -11,6 +12,8 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { usersService, type SystemUser } from '../../api/users.service';
 import { auditService } from '../../api/audit.service';
+import { useNotifications } from '../../context/NotificationContext';
+import { ResetRequestsTab } from './tabs/ResetRequestTab';
 
 const ROLE_COLORS: Record<AppRole, 'danger' | 'primary' | 'success' | 'warning'> = {
   ADMIN: 'danger',
@@ -40,7 +43,9 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 export const UsersPage: React.FC = () => {
   const { success, error } = useToast();
   const { can, user: me } = useAuth();
-  const [tab, setTab] = useState<'users' | 'audit'>('users');
+  const [tab, setTab] = useState<'users' | 'audit' | 'reset-requests'>('users');
+  const { pendingResetRequests } = useNotifications();
+  const canViewResetRequests = can('users.update');
 
   // Users
   const [users, setUsers] = useState<SystemUser[]>([]);
@@ -88,22 +93,22 @@ export const UsersPage: React.FC = () => {
     );
   }, [users, search]);
 
-  const openCreate = () => { 
-    setEditing(null); 
-    setForm({ firstName: '', lastName: '', email: '', password: '', role: 'COORDINADOR' }); 
-    setShowForm(true); 
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ firstName: '', lastName: '', email: '', password: '', role: 'COORDINADOR' });
+    setShowForm(true);
   };
-  const openEdit = (u: SystemUser) => { 
-    setEditing(u); 
-    setForm({ firstName: u.firstName, lastName: u.lastName, email: u.email, password: '', role: u.role }); 
-    setShowForm(true); 
+  const openEdit = (u: SystemUser) => {
+    setEditing(u);
+    setForm({ firstName: u.firstName, lastName: u.lastName, email: u.email, password: '', role: u.role });
+    setShowForm(true);
   };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editing && form.password.length < 6) { 
-      error('La contraseña debe tener al menos 6 caracteres'); 
-      return; 
+    if (!editing && form.password.length < 6) {
+      error('La contraseña debe tener al menos 6 caracteres');
+      return;
     }
     setSaving(true);
     try {
@@ -116,42 +121,42 @@ export const UsersPage: React.FC = () => {
         await usersService.create(form);
       }
       success(editing ? '✅ Usuario actualizado' : '✅ Usuario creado');
-      setShowForm(false); 
+      setShowForm(false);
       load();
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error'); 
-    } finally { 
-      setSaving(false); 
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!del) return; 
+    if (!del) return;
     setSaving(true);
-    try { 
-      await usersService.remove(del.id); 
-      success('✅ Usuario desactivado'); 
-      setDel(null); 
-      load(); 
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error'); 
-    } finally { 
-      setSaving(false); 
+    try {
+      await usersService.remove(del.id);
+      success('✅ Usuario desactivado');
+      setDel(null);
+      load();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleActivate = async () => {
-    if (!activating) return; 
+    if (!activating) return;
     setSaving(true);
-    try { 
-      await usersService.activate(activating.id); 
-      success('✅ Usuario activado correctamente'); 
-      setActivating(null); 
-      load(); 
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error al activar'); 
-    } finally { 
-      setSaving(false); 
+    try {
+      await usersService.activate(activating.id);
+      success('✅ Usuario activado correctamente');
+      setActivating(null);
+      load();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error al activar');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -165,13 +170,13 @@ export const UsersPage: React.FC = () => {
       </div>
 
       {/* Tabs modernos */}
-      <div style={{ 
-        display: 'inline-flex', 
-        gap: 4, 
-        marginBottom: 24, 
-        background: 'var(--color-neutral-100)', 
-        padding: 4, 
-        borderRadius: 12 
+      <div style={{
+        display: 'inline-flex',
+        gap: 4,
+        marginBottom: 24,
+        background: 'var(--color-neutral-100)',
+        padding: 4,
+        borderRadius: 12
       }}>
         <button
           onClick={() => setTab('users')}
@@ -211,15 +216,44 @@ export const UsersPage: React.FC = () => {
             Auditoría
           </button>
         )}
+        {canViewResetRequests && (
+          <button
+            onClick={() => setTab('reset-requests')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8,
+              fontSize: 'var(--text-sm)', fontWeight: 600, transition: 'all 0.2s',
+              background: tab === 'reset-requests' ? 'var(--color-neutral-0)' : 'transparent',
+              color: tab === 'reset-requests' ? 'var(--color-primary-600)' : 'var(--color-neutral-600)',
+              boxShadow: tab === 'reset-requests' ? 'var(--shadow-sm)' : 'none',
+            }}
+          >
+            <BellAlertIcon style={{ width: 18, height: 18 }} />
+            Solicitudes de acceso
+            {pendingResetRequests > 0 && (
+              <span style={{
+                background: 'var(--color-danger-500)',
+                color: 'white',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 10,
+                minWidth: 20,
+                textAlign: 'center',
+              }}>
+                {pendingResetRequests}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ============== TAB: USUARIOS ============== */}
       {tab === 'users' && (
         <>
           {/* Barra de búsqueda + acción */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'flex-end',
             gap: 12,
             marginBottom: 16,
@@ -242,10 +276,10 @@ export const UsersPage: React.FC = () => {
 
           <Card className="p-0">
             {filteredUsers.length === 0 ? (
-              <div style={{ 
-                padding: 48, 
-                textAlign: 'center', 
-                color: 'var(--color-neutral-500)' 
+              <div style={{
+                padding: 48,
+                textAlign: 'center',
+                color: 'var(--color-neutral-500)'
               }}>
                 <UserIcon style={{ width: 48, height: 48, margin: '0 auto 12px', opacity: 0.3 }} />
                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: 4 }}>
@@ -276,13 +310,13 @@ export const UsersPage: React.FC = () => {
                           <tr key={u.id}>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div 
+                                <div
                                   style={{
                                     width: 36,
                                     height: 36,
                                     borderRadius: '50%',
-                                    background: isMe 
-                                      ? 'var(--color-primary-100)' 
+                                    background: isMe
+                                      ? 'var(--color-primary-100)'
                                       : `hsl(${u.firstName.charCodeAt(0) * 10}, 50%, 88%)`,
                                     color: isMe ? 'var(--color-primary-700)' : 'var(--color-neutral-700)',
                                     display: 'flex',
@@ -326,9 +360,9 @@ export const UsersPage: React.FC = () => {
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                 {canUpdate && u.id !== me?.id && (
-                                  <button 
-                                    onClick={() => openEdit(u)} 
-                                    style={{ 
+                                  <button
+                                    onClick={() => openEdit(u)}
+                                    style={{
                                       padding: '6px 10px',
                                       borderRadius: 6,
                                       background: 'var(--color-neutral-100)',
@@ -348,9 +382,9 @@ export const UsersPage: React.FC = () => {
                                   </button>
                                 )}
                                 {canDelete && u.isActive && u.id !== me?.id && (
-                                  <button 
-                                    onClick={() => setDel(u)} 
-                                    style={{ 
+                                  <button
+                                    onClick={() => setDel(u)}
+                                    style={{
                                       padding: '6px 10px',
                                       borderRadius: 6,
                                       background: 'var(--color-danger-50)',
@@ -370,9 +404,9 @@ export const UsersPage: React.FC = () => {
                                   </button>
                                 )}
                                 {canUpdate && !u.isActive && u.id !== me?.id && (
-                                  <button 
-                                    onClick={() => setActivating(u)} 
-                                    style={{ 
+                                  <button
+                                    onClick={() => setActivating(u)}
+                                    style={{
                                       padding: '6px 10px',
                                       borderRadius: 6,
                                       background: 'var(--color-success-50)',
@@ -412,9 +446,9 @@ export const UsersPage: React.FC = () => {
           </Card>
 
           {/* Modal de crear/editar */}
-          <Modal 
-            isOpen={showForm} 
-            onClose={() => setShowForm(false)} 
+          <Modal
+            isOpen={showForm}
+            onClose={() => setShowForm(false)}
             title={editing ? 'Editar usuario' : 'Nuevo usuario'}
           >
             <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -430,45 +464,45 @@ export const UsersPage: React.FC = () => {
                   <strong>ℹ️ Editando:</strong> {editing.firstName} {editing.lastName}
                 </div>
               )}
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Input 
-                  label="Nombres" 
-                  value={form.firstName} 
-                  onChange={(e) => setForm({ ...form, firstName: e.target.value })} 
+                <Input
+                  label="Nombres"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                   required
                   icon={<UserIcon />}
                   placeholder="Ej: Juan Carlos"
                 />
-                <Input 
-                  label="Apellidos" 
-                  value={form.lastName} 
-                  onChange={(e) => setForm({ ...form, lastName: e.target.value })} 
+                <Input
+                  label="Apellidos"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                   required
                   icon={<UserIcon />}
                   placeholder="Ej: Pérez García"
                 />
               </div>
-              <Input 
-                label="Email" 
-                type="email" 
-                value={form.email} 
-                onChange={(e) => setForm({ ...form, email: e.target.value })} 
+              <Input
+                label="Email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
                 icon={<EnvelopeIcon />}
                 placeholder="usuario@institucion.edu"
               />
-              <Select 
-                label="Rol" 
-                value={form.role} 
-                onChange={(e) => setForm({ ...form, role: e.target.value as AppRole })} 
-                options={Object.entries(ROLE_LABELS).map(([v, l]) => ({ value: v, label: l }))} 
+              <Select
+                label="Rol"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value as AppRole })}
+                options={Object.entries(ROLE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
               />
-              <Input 
-                label={editing ? 'Nueva contraseña (vacío = sin cambios)' : 'Contraseña'} 
-                type="password" 
-                value={form.password} 
-                onChange={(e) => setForm({ ...form, password: e.target.value })} 
+              <Input
+                label={editing ? 'Nueva contraseña (vacío = sin cambios)' : 'Contraseña'}
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required={!editing}
                 icon={<KeyIcon />}
                 placeholder={editing ? 'Dejar vacío para mantener la actual' : 'Mínimo 6 caracteres'}
@@ -478,8 +512,8 @@ export const UsersPage: React.FC = () => {
                 <Button variant="secondary" onClick={() => setShowForm(false)}>
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   isLoading={saving}
                   loadingText={editing ? 'Actualizando...' : 'Creando...'}
                   icon={editing ? <PencilIcon /> : <PlusIcon />}
@@ -490,21 +524,21 @@ export const UsersPage: React.FC = () => {
             </form>
           </Modal>
 
-          <ConfirmModal 
-            isOpen={!!del} 
-            onClose={() => setDel(null)} 
-            onConfirm={handleDelete} 
-            title="Desactivar usuario" 
-            message={`¿Estás seguro de desactivar a ${del?.firstName} ${del?.lastName}?\n\nEl usuario no podrá acceder al sistema pero sus datos se conservarán.`} 
-            isLoading={saving} 
+          <ConfirmModal
+            isOpen={!!del}
+            onClose={() => setDel(null)}
+            onConfirm={handleDelete}
+            title="Desactivar usuario"
+            message={`¿Estás seguro de desactivar a ${del?.firstName} ${del?.lastName}?\n\nEl usuario no podrá acceder al sistema pero sus datos se conservarán.`}
+            isLoading={saving}
           />
-          <ConfirmModal 
-            isOpen={!!activating} 
-            onClose={() => setActivating(null)} 
-            onConfirm={handleActivate} 
-            title="Activar usuario" 
-            message={`¿Activar nuevamente a ${activating?.firstName} ${activating?.lastName}?\n\nEl usuario podrá acceder al sistema con sus credenciales anteriores.`} 
-            isLoading={saving} 
+          <ConfirmModal
+            isOpen={!!activating}
+            onClose={() => setActivating(null)}
+            onConfirm={handleActivate}
+            title="Activar usuario"
+            message={`¿Activar nuevamente a ${activating?.firstName} ${activating?.lastName}?\n\nEl usuario podrá acceder al sistema con sus credenciales anteriores.`}
+            isLoading={saving}
           />
         </>
       )}
@@ -514,11 +548,11 @@ export const UsersPage: React.FC = () => {
         <>
           {/* Stats */}
           {auditStats && (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-              gap: 12, 
-              marginBottom: 16 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
+              marginBottom: 16
             }}>
               <Card className="p-4" style={{ background: 'var(--color-primary-50)', borderColor: 'var(--color-primary-200, var(--color-neutral-200))' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -557,10 +591,10 @@ export const UsersPage: React.FC = () => {
 
           {/* Filtros */}
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 8, 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
               marginBottom: 12,
               fontSize: 'var(--text-sm)',
               fontWeight: 600,
@@ -570,30 +604,30 @@ export const UsersPage: React.FC = () => {
               Filtros
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-              <Select 
-                label="Entidad" 
-                value={auditFilters.entity} 
+              <Select
+                label="Entidad"
+                value={auditFilters.entity}
                 onChange={(e) => { setAuditFilters({ ...auditFilters, entity: e.target.value }); setAuditPage(1); }}
-                options={[{ value: '', label: 'Todas' }, ...['User', 'Sede', 'Turno', 'Classroom', 'Section', 'Area', 'Course', 'Period', 'Block', 'Student', 'Teacher', 'Enrollment', 'Payment', 'Schedule'].map((e) => ({ value: e, label: e }))]} 
+                options={[{ value: '', label: 'Todas' }, ...['User', 'Sede', 'Turno', 'Classroom', 'Section', 'Area', 'Course', 'Period', 'Block', 'Student', 'Teacher', 'Enrollment', 'Payment', 'Schedule'].map((e) => ({ value: e, label: e }))]}
               />
-              <Select 
-                label="Acción" 
-                value={auditFilters.action} 
+              <Select
+                label="Acción"
+                value={auditFilters.action}
                 onChange={(e) => { setAuditFilters({ ...auditFilters, action: e.target.value }); setAuditPage(1); }}
-                options={[{ value: '', label: 'Todas' }, ...Object.entries(ACTION_LABELS).map(([k, v]) => ({ value: k, label: v.label }))]} 
+                options={[{ value: '', label: 'Todas' }, ...Object.entries(ACTION_LABELS).map(([k, v]) => ({ value: k, label: v.label }))]}
               />
-              <Input 
-                label="Desde" 
-                type="date" 
-                value={auditFilters.startDate} 
-                onChange={(e) => { setAuditFilters({ ...auditFilters, startDate: e.target.value }); setAuditPage(1); }} 
+              <Input
+                label="Desde"
+                type="date"
+                value={auditFilters.startDate}
+                onChange={(e) => { setAuditFilters({ ...auditFilters, startDate: e.target.value }); setAuditPage(1); }}
                 icon={<CalendarIcon />}
               />
-              <Input 
-                label="Hasta" 
-                type="date" 
-                value={auditFilters.endDate} 
-                onChange={(e) => { setAuditFilters({ ...auditFilters, endDate: e.target.value }); setAuditPage(1); }} 
+              <Input
+                label="Hasta"
+                type="date"
+                value={auditFilters.endDate}
+                onChange={(e) => { setAuditFilters({ ...auditFilters, endDate: e.target.value }); setAuditPage(1); }}
                 icon={<CalendarIcon />}
               />
             </div>
@@ -626,10 +660,10 @@ export const UsersPage: React.FC = () => {
           {/* Tabla de logs */}
           <Card className="p-0">
             {auditLogs.length === 0 ? (
-              <div style={{ 
-                padding: 48, 
-                textAlign: 'center', 
-                color: 'var(--color-neutral-500)' 
+              <div style={{
+                padding: 48,
+                textAlign: 'center',
+                color: 'var(--color-neutral-500)'
               }}>
                 <ClockIcon style={{ width: 48, height: 48, margin: '0 auto 12px', opacity: 0.3 }} />
                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: 4 }}>
@@ -667,7 +701,7 @@ export const UsersPage: React.FC = () => {
                             </td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div 
+                                <div
                                   style={{
                                     width: 28,
                                     height: 28,
@@ -714,9 +748,9 @@ export const UsersPage: React.FC = () => {
                             </td>
                             <td>
                               {log.ipAddress ? (
-                                <div style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   gap: 4,
                                   fontSize: 'var(--text-xs)',
                                   fontFamily: 'monospace',
@@ -740,12 +774,12 @@ export const UsersPage: React.FC = () => {
                   </table>
                 </div>
                 {auditTotal > 0 && (
-                  <Pagination 
-                    currentPage={auditPage} 
-                    pageSize={auditPageSize} 
-                    totalItems={auditTotal} 
-                    onPageChange={setAuditPage} 
-                    onPageSizeChange={setAuditPageSize} 
+                  <Pagination
+                    currentPage={auditPage}
+                    pageSize={auditPageSize}
+                    totalItems={auditTotal}
+                    onPageChange={setAuditPage}
+                    onPageSizeChange={setAuditPageSize}
                   />
                 )}
               </>
@@ -753,6 +787,8 @@ export const UsersPage: React.FC = () => {
           </Card>
         </>
       )}
+
+      {tab === 'reset-requests' && canViewResetRequests && <ResetRequestsTab />}
     </div>
   );
 };

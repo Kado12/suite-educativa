@@ -21,6 +21,7 @@ import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { UploadModule } from './modules/upload/upload.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { PasswordResetModule } from './modules/password-reset/password-reset.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     UploadModule,
     PdfModule,
     SettingsModule,
+    PasswordResetModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

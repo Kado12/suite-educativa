@@ -36,12 +36,12 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Por favor completa todos los campos');
       return;
     }
-    
+
     setLoading(true);
     try {
       await login(email, password);
@@ -55,18 +55,18 @@ export const LoginPage: React.FC = () => {
   };
 
   const features = [
-    { 
-      icon: UserGroupIcon, 
+    {
+      icon: UserGroupIcon,
       text: 'Gestión integral de alumnos, docentes y personal',
       color: 'var(--color-primary-600)'
     },
-    { 
-      icon: CalendarDaysIcon, 
+    {
+      icon: CalendarDaysIcon,
       text: 'Generador automático de horarios inteligentes',
       color: 'var(--color-success-600)'
     },
-    { 
-      icon: DocumentChartBarIcon, 
+    {
+      icon: DocumentChartBarIcon,
       text: 'Reportes, consolidados y exportación Excel',
       color: 'var(--color-warning-600)'
     },
@@ -81,8 +81,8 @@ export const LoginPage: React.FC = () => {
           </div>
           <div>
             <div className="auth-brand-name">{institutionName}</div>
-            <div style={{ 
-              fontSize: 'var(--text-xs)', 
+            <div style={{
+              fontSize: 'var(--text-xs)',
               color: 'var(--color-neutral-400)',
               marginTop: 4
             }}>
@@ -110,8 +110,8 @@ export const LoginPage: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ 
-          marginTop: 'auto', 
+        <div style={{
+          marginTop: 'auto',
           paddingTop: 32,
           display: 'flex',
           alignItems: 'center',
@@ -132,7 +132,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {error && (
-            <div 
+            <div
               className="auth-error"
               style={{
                 animation: 'shake 0.4s ease-in-out',
@@ -145,8 +145,8 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="auth-form" style={{ gap: 20 }}>
             <div>
-              <Input 
-                label="Email" 
+              <Input
+                label="Email"
                 icon={<EnvelopeIcon />}
                 placeholder="admin@suite.edu"
                 value={email}
@@ -158,8 +158,8 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div>
-              <Input 
-                label="Contraseña" 
+              <Input
+                label="Contraseña"
                 icon={<LockClosedIcon />}
                 placeholder="••••••••"
                 value={password}
@@ -188,8 +188,8 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="btn-lg"
               isLoading={loading}
               loadingText="Ingresando..."
@@ -200,17 +200,30 @@ export const LoginPage: React.FC = () => {
           </form>
 
           <div className="auth-footer" style={{ marginTop: 24 }}>
-            <div style={{ 
-              padding: 12, 
-              background: 'var(--color-neutral-50)', 
+            <div style={{
+              padding: 12,
+              background: 'var(--color-neutral-50)',
               borderRadius: 8,
               fontSize: 'var(--text-sm)',
               color: 'var(--color-neutral-600)',
               textAlign: 'center'
             }}>
-              ¿Olvidaste tus credenciales? 
-              <br />
-              Contacta al administrador del sistema.
+              ¿Olvidaste tu contraseña?{' '}
+              <button
+                onClick={() => nav('/forgot-password')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-primary-600)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontSize: 'inherit',
+                }}
+              >
+                Solicitar recuperación
+              </button>
             </div>
           </div>
         </div>

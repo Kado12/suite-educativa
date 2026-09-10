@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  UserCircleIcon, KeyIcon, EnvelopeIcon, UserIcon, 
+import {
+  UserCircleIcon, KeyIcon, EnvelopeIcon, UserIcon,
   ShieldCheckIcon, InformationCircleIcon, CheckCircleIcon,
   EyeIcon, EyeSlashIcon
 } from '@heroicons/react/24/outline';
@@ -26,7 +26,7 @@ export const ProfilePage: React.FC = () => {
   const [profile, setProfile] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    emailPrefix: user?.email.split('@')[0] || '',
+    email: user?.email || '',
   });
 
   // Password form
@@ -43,7 +43,7 @@ export const ProfilePage: React.FC = () => {
       await authService.updateProfile({
         firstName: profile.firstName,
         lastName: profile.lastName,
-        emailPrefix: profile.emailPrefix,
+        emailPrefix: profile.email.split('@')[0],
       });
       success('✅ Perfil actualizado correctamente');
       await refreshProfile();
@@ -56,17 +56,17 @@ export const ProfilePage: React.FC = () => {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwords.newPassword.length < 6) {
       error('La nueva contraseña debe tener al menos 6 caracteres');
       return;
     }
-    
+
     if (passwords.newPassword !== passwords.confirmPassword) {
       error('Las contraseñas no coinciden');
       return;
     }
-    
+
     setSaving(true);
     try {
       await authService.changePassword({
@@ -104,7 +104,7 @@ export const ProfilePage: React.FC = () => {
       {/* Header con información del usuario */}
       <Card style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div 
+          <div
             style={{
               width: 72,
               height: 72,
@@ -140,13 +140,13 @@ export const ProfilePage: React.FC = () => {
       </Card>
 
       {/* Tabs modernos */}
-      <div style={{ 
-        display: 'inline-flex', 
-        gap: 4, 
-        marginBottom: 24, 
-        background: 'var(--color-neutral-100)', 
-        padding: 4, 
-        borderRadius: 12 
+      <div style={{
+        display: 'inline-flex',
+        gap: 4,
+        marginBottom: 24,
+        background: 'var(--color-neutral-100)',
+        padding: 4,
+        borderRadius: 12
       }}>
         <button
           onClick={() => setTab('profile')}
@@ -207,59 +207,39 @@ export const ProfilePage: React.FC = () => {
                 placeholder="Ej: Pérez García"
               />
             </div>
-            
+
             <div>
-              <label className="input-label">Email institucional</label>
-              <div style={{ display: 'flex', gap: 0 }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{ 
-                    position: 'absolute', 
-                    left: 12, 
-                    top: '50%', 
-                    transform: 'translateY(-50%)',
-                    color: 'var(--color-neutral-400)',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    <EnvelopeIcon style={{ width: 18, height: 18 }} />
-                  </span>
-                  <input
-                    type="text"
-                    value={profile.emailPrefix}
-                    onChange={(e) => setProfile({ ...profile, emailPrefix: e.target.value })}
-                    className="input"
-                    style={{ 
-                      flex: 1, 
-                      borderRadius: '8px 0 0 8px',
-                      paddingLeft: 40,
-                    }}
-                    required
-                    placeholder="usuario"
-                  />
-                </div>
-                <div style={{
-                  padding: '8px 16px', 
-                  background: 'var(--color-neutral-100)',
-                  border: '1px solid var(--color-neutral-300)', 
-                  borderLeft: 'none',
-                  borderRadius: '0 8px 8px 0', 
-                  fontSize: 'var(--text-sm)', 
-                  color: 'var(--color-neutral-600)',
-                  display: 'flex', 
-                  alignItems: 'center',
-                  fontWeight: 500,
+              <label className="input-label">Correo electrónico</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--color-neutral-400)',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}>
-                  @suite.edu
-                </div>
+                  <EnvelopeIcon style={{ width: 18, height: 18 }} />
+                </span>
+                <input
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  className="input"
+                  style={{ paddingLeft: 40 }}
+                  required
+                  placeholder="tu@email.com"
+                />
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 6 }}>
-                Tu email completo será: <strong>{profile.emailPrefix}@suite.edu</strong>
+                Puedes usar cualquier correo electrónico que revises frecuentemente.
               </div>
             </div>
 
-            <div style={{ 
-              padding: 12, 
-              background: 'var(--color-info-50)', 
+            <div style={{
+              padding: 12,
+              background: 'var(--color-info-50)',
               border: '1px solid var(--color-info-200, var(--color-neutral-200))',
               borderRadius: 8,
               display: 'flex',
@@ -273,17 +253,17 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 isLoading={saving}
                 loadingText="Guardando..."
                 icon={<CheckCircleIcon />}
               >
                 Guardar cambios
               </Button>
-              <Button 
-                variant="secondary" 
-                type="button" 
+              <Button
+                variant="secondary"
+                type="button"
                 onClick={() => nav(-1)}
               >
                 Cancelar
@@ -403,9 +383,9 @@ export const ProfilePage: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ 
-              padding: 12, 
-              background: 'var(--color-warning-50)', 
+            <div style={{
+              padding: 12,
+              background: 'var(--color-warning-50)',
               border: '1px solid var(--color-warning-200, var(--color-neutral-200))',
               borderRadius: 8,
               display: 'flex',
@@ -421,8 +401,8 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 isLoading={saving}
                 loadingText="Cambiando..."
                 icon={<KeyIcon />}
@@ -430,9 +410,9 @@ export const ProfilePage: React.FC = () => {
               >
                 Cambiar contraseña
               </Button>
-              <Button 
-                variant="secondary" 
-                type="button" 
+              <Button
+                variant="secondary"
+                type="button"
                 onClick={() => nav(-1)}
               >
                 Cancelar

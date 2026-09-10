@@ -13,10 +13,12 @@ import {
   ShieldCheckIcon,
   ArrowDownOnSquareStackIcon,
   Cog6ToothIcon,
+  BellAlertIcon,
 } from '@heroicons/react/24/outline';
 import { hasPermission } from '@suite/shared';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -58,6 +60,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
   const sections = Array.from(new Set(MENU.map((m) => m.section || 'General')));
 
+  const { pendingResetRequests } = useNotifications();
+  const canViewResetRequests = user && (user.role === 'ADMIN' || user.role === 'INFORMATICO');
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
@@ -97,6 +102,67 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       </nav>
 
       <div className='sidebar-footer'>
+        {canViewResetRequests && pendingResetRequests > 0 && (
+          <button
+            onClick={() => nav('/users')}
+            style={{
+              width: '100%',
+              marginBottom: 8,
+              padding: '10px 12px',
+              background: 'var(--color-danger-50)',
+              color: 'var(--color-danger-700)',
+              border: '1px solid var(--color-danger-200)',
+              borderRadius: 8,
+              fontSize: 'var(--text-sm)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--color-danger-100)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--color-danger-50)';
+            }}
+          >
+            <BellAlertIcon style={{ width: 18, height: 18 }} />
+            {!collapsed && (
+              <>
+                <span style={{ flex: 1, textAlign: 'left' }}>Solicitudes</span>
+                <span style={{
+                  background: 'var(--color-danger-500)',
+                  color: 'white',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  minWidth: 20,
+                  textAlign: 'center',
+                }}>
+                  {pendingResetRequests}
+                </span>
+              </>
+            )}
+            {collapsed && (
+              <span style={{
+                background: 'var(--color-danger-500)',
+                color: 'white',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 10,
+                minWidth: 18,
+                textAlign: 'center',
+              }}>
+                {pendingResetRequests}
+              </span>
+            )}
+          </button>
+        )}
+
         <div
           onClick={() => nav('/profile')}
           className='sidebar-user'

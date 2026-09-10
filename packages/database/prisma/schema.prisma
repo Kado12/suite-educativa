@@ -83,6 +83,7 @@ model User {
 
   person      Person?          @relation(fields: [personId], references: [id], onDelete: SetNull)
   validations WeekValidation[]
+  passwordResetRequests PasswordResetRequest[] @relation("ResolvedBy")
 
   @@map("users")
 }
@@ -443,4 +444,29 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+// ==================== SOLICITUDES DE RESET ====================
+
+enum PasswordResetStatus {
+  PENDING
+  RESOLVED
+  EXPIRED
+}
+
+model PasswordResetRequest {
+  id           String              @id @default(cuid())
+  userEmail    String
+  userName     String?
+  status       PasswordResetStatus @default(PENDING)
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  expiresAt    DateTime
+
+  resolvedBy User? @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("password_reset_requests")
 }
