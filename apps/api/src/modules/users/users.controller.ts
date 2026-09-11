@@ -5,29 +5,47 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { Auditable } from '../audit/audit.decorator';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('Usuarios')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private svc: UsersService) {}
+  constructor(private svc: UsersService) { }
 
-  @Get() @RequirePermissions('users.view')
-  list() { return this.svc.list(); }
+  @Get()
+  @RequirePermissions('users.view')
+  list() {
+    return this.svc.list();
+  }
 
-  @Post() @RequirePermissions('users.create') @Auditable('CREATE', 'User')
-  create(@Body() b: any) { return this.svc.create(b); }
+  @Post()
+  @RequirePermissions('users.create')
+  @Auditable('CREATE', 'User')
+  create(@Body() dto: CreateUserDto) {
+    return this.svc.create(dto);
+  }
 
-  @Patch(':id') @RequirePermissions('users.update') @Auditable('UPDATE', 'User')
-  update(@Param('id') id: string, @Body() b: any) { return this.svc.update(id, b); }
+  @Patch(':id')
+  @RequirePermissions('users.update')
+  @Auditable('UPDATE', 'User')
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.svc.update(id, dto);
+  }
 
   @Patch(':id/activate')
   @RequirePermissions('users.update')
+  @Auditable('ACTIVATE', 'User')
   activate(@Param('id') id: string) {
     return this.svc.activate(id);
   }
 
-  @Delete(':id') @RequirePermissions('users.delete') @Auditable('DELETE', 'User')
-  remove(@Param('id') id: string, @Request() req) { return this.svc.remove(id, req.user.id); }
+  @Delete(':id')
+  @RequirePermissions('users.delete')
+  @Auditable('DELETE', 'User')
+  remove(@Param('id') id: string, @Request() req) {
+    return this.svc.remove(id, req.user.id);
+  }
 }
