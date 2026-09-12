@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../../prisma/prisma.service';
 import { UploadService } from '../upload/upload.service';
 import * as ExcelJS from 'exceljs';
+import { CreateStudentDto, UpdateStudentDto, UpdateStudentFullDto } from './dto/student.dto';
+import { CreateTeacherDto, UpdateTeacherFullDto, UpdateTeacherProfileDto } from './dto/teacher.dto';
 
 @Injectable()
 export class PeopleService {
@@ -15,10 +17,7 @@ export class PeopleService {
     }
   }
 
-  async updateStudentFull(id: string, data: {
-    firstName?: string; lastName?: string; docType?: string; dni?: string;
-    phone?: string; email?: string; birthDate?: string; gender?: string; address?: string; photoUrl?: string
-  }) {
+  async updateStudentFull(id: string, data: UpdateStudentFullDto) {
     const person = await this.prisma.person.findUnique({ where: { id } });
     if (!person) throw new NotFoundException('Alumno no encontrado');
 
@@ -69,16 +68,7 @@ export class PeopleService {
   }
 
   // ===== ALUMNOS =====
-  async createStudent(data: {
-    firstName: string;
-    lastName: string;
-    dni?: string;
-    phone?: string;
-    email?: string;
-    birthDate?: string;
-    gender?: string;
-    address?: string;
-  }) {
+  async createStudent(data: CreateStudentDto) {
     if (data.dni && await this.prisma.person.findUnique({ where: { dni: data.dni } })) {
       throw new ConflictException('Ya existe una persona con ese DNI');
     }
@@ -133,7 +123,7 @@ export class PeopleService {
     });
   }
 
-  async updatePerson(id: string, data: any) {
+  async updatePerson(id: string, data: UpdateStudentDto) {
     const person = await this.prisma.person.findUnique({ where: { id } });
     if (!person) throw new NotFoundException('Persona no encontrada');
     if (data.dni && data.dni !== person.dni) {
@@ -182,18 +172,7 @@ export class PeopleService {
   }
 
   // ===== DOCENTES =====
-  async createTeacher(data: {
-    firstName: string;
-    lastName: string;
-    dni: string;
-    phone?: string;
-    email?: string;
-    priority?: number;
-    yearsExperience?: number;
-    maxSessionsPerWeek?: number;
-    maxSections?: number;
-    notes?: string;
-  }) {
+  async createTeacher(data: CreateTeacherDto) {
     if (!data.dni) throw new BadRequestException('El DNI es obligatorio para docentes');
     const existing = await this.prisma.person.findUnique({ where: { dni: data.dni } });
     if (existing) throw new ConflictException('Ya existe una persona con ese DNI');
@@ -250,20 +229,11 @@ export class PeopleService {
     });
   }
 
-  async updateTeacherProfile(teacherProfileId: string, data: {
-    priority?: number;
-    yearsExperience?: number | null;
-    maxSessionsPerWeek?: number | null;
-    maxSections?: number | null;
-    notes?: string | null;
-  }) {
+  async updateTeacherProfile(teacherProfileId: string, data: UpdateTeacherProfileDto) {
     return this.prisma.teacherProfile.update({ where: { id: teacherProfileId }, data });
   }
 
-  async updateTeacherFull(profileId: string, data: {
-    firstName?: string; lastName?: string; dni?: string; phone?: string; email?: string;
-    priority?: number; yearsExperience?: number; maxSessionsPerWeek?: number; maxSections?: number;
-  }) {
+  async updateTeacherFull(profileId: string, data: UpdateTeacherFullDto) {
     const profile = await this.prisma.teacherProfile.findUnique({ where: { id: profileId }, include: { person: true } });
     if (!profile) throw new NotFoundException('Perfil docente no encontrado');
 

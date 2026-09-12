@@ -7,6 +7,27 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 import { Auditable } from '../audit/audit.decorator';
 import { Response } from 'express';
 
+import {
+  CreateStudentDto,
+  UpdateStudentDto,
+  UpdateStudentFullDto,
+  ListStudentsQueryDto,
+  PhotoInfoQueryDto,
+} from './dto/student.dto';
+import {
+  CreateTeacherDto,
+  UpdateTeacherProfileDto,
+  UpdateTeacherFullDto,
+  ListTeachersQueryDto,
+} from './dto/teacher.dto';
+import {
+  SetTeacherCoursesDto,
+  SetTeacherTurnosDto,
+  SetTeacherSedesDto,
+  SetTeacherUnavailableDaysDto,
+  SetTeacherSedeDaysDto,
+} from './dto/teacher-assignments.dto';
+
 @ApiTags('Personas')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -14,49 +35,131 @@ import { Response } from 'express';
 export class PeopleController {
   constructor(private svc: PeopleService) {}
 
-  // Alumnos
-  @Post('students') @RequirePermissions('enrollment.manage') @Auditable('CREATE', 'Estudiante')
-  createStudent(@Body() b: any) { return this.svc.createStudent(b); }
-  @Get('students') @RequirePermissions('enrollment.view')
-  listStudents(@Query('search') search?: string) { return this.svc.listStudents(search); }
-  @Get('students/export') @RequirePermissions('enrollment.view')
-  async exportStudents(@Query('search') search: string, @Res() res: Response) {
-    const b = await this.svc.exportStudentsExcel(search);
-    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="alumnos.xlsx"' });
+  // ===== ALUMNOS =====
+  @Post('students')
+  @RequirePermissions('enrollment.manage')
+  @Auditable('CREATE', 'Estudiante')
+  createStudent(@Body() dto: CreateStudentDto) {
+    return this.svc.createStudent(dto);
+  }
+
+  @Get('students')
+  @RequirePermissions('enrollment.view')
+  listStudents(@Query() query: ListStudentsQueryDto) {
+    return this.svc.listStudents(query.search);
+  }
+
+  @Get('students/export')
+  @RequirePermissions('enrollment.view')
+  async exportStudents(@Query() query: ListStudentsQueryDto, @Res() res: Response) {
+    const b = await this.svc.exportStudentsExcel(query.search);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="alumnos.xlsx"',
+    });
     res.send(b);
   }
-  @Get('students/:id/enrollments') @RequirePermissions('enrollment.view')
-  getEnrollments(@Param('id') id: string): Promise<any> { return this.svc.getStudentEnrollments(id); }
-  @Get('students/:id/photo-info') @RequirePermissions('enrollment.view')
-  getPhotoInfo(@Param('id') id: string, @Query('newDni') newDni: string) { return this.svc.replaceStudentPhoto(id, newDni); }
-  @Patch('students/:id') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Estudiante')
-  updateStudent(@Param('id') id: string, @Body() b: any) { return this.svc.updatePerson(id, b); }
-  @Patch('students/:id/full') @RequirePermissions('enrollment.manage') @Auditable('UPDATE', 'Student')
-  updateStudentFull(@Param('id') id: string, @Body() b: any) { return this.svc.updateStudentFull(id, b); }
-  @Delete('students/:id') @RequirePermissions('enrollment.manage') @Auditable('DELETE', 'Estudiante')
-  deleteStudent(@Param('id') id: string) { return this.svc.deletePerson(id); }
 
-  // Docentes
-  @Post('teachers') @RequirePermissions('academic.manage') @Auditable('CREATE', 'Docente')
-  createTeacher(@Body() b: any) { return this.svc.createTeacher(b); }
-  @Get('teachers') @RequirePermissions('academic.view')
-  listTeachers(@Query('search') search?: string) { return this.svc.listTeachers(search); }
-  @Patch('teachers/:profileId') @RequirePermissions('academic.manage') @Auditable('UPDATE', 'Docente')
-  updateTeacher(@Param('profileId') id: string, @Body() b: any) { return this.svc.updateTeacherProfile(id, b); }
-  @Patch('teachers/:profileId/full') @RequirePermissions('academic.manage') @Auditable('UPDATE', 'Docente')
-  updateTeacherFull(@Param('profileId') id: string, @Body() b: any) { return this.svc.updateTeacherFull(id, b); }
-  @Put('teachers/:profileId/courses') @RequirePermissions('academic.manage') @Auditable('UPDATE_COURSE', 'Docente - Curso')
-  setCourses(@Param('profileId') id: string, @Body('courseIds') ids: string[]) { return this.svc.setTeacherCourses(id, ids || []); }
-  @Put('teachers/:profileId/turnos') @RequirePermissions('academic.manage') @Auditable('UPDATE_TURNS', 'Docente - Turno')
-  setTurnos(@Param('profileId') id: string, @Body('turnoIds') ids: string[]) { return this.svc.setTeacherTurnos(id, ids || []); }
-  @Put('teachers/:profileId/sedes') @RequirePermissions('academic.manage') @Auditable('UPDATE_SEDE', 'Docente - Sede')
-  setSedes(@Param('profileId') id: string, @Body('sedeIds') ids: string[]) { return this.svc.setTeacherSedes(id, ids || []); }
-  @Put('teachers/:profileId/unavailable-days') @RequirePermissions('academic.manage') @Auditable('UPDATE_AVAILABILITYE', 'Docente - Disponibilidad')
-  setUnavailable(@Param('profileId') id: string, @Body('days') days: number[]) { return this.svc.setTeacherUnavailableDays(id, days || []); }
-  @Delete('teachers/:profileId') @RequirePermissions('academic.manage') @Auditable('DELETE', 'Docente')
-  deleteTeacher(@Param('profileId') id: string) { return this.svc.deleteTeacher(id); }
-  @Put('teachers/:profileId/sede-days') @RequirePermissions('academic.manage') @Auditable('UPDATE_SEDE_DAYS', 'Docente - Disponibilidad - Sedes')
-  setSedeDays(@Param('profileId') id: string, @Body() b: { sedeId: string; days: number[] }) {
-    return this.svc.setTeacherSedeDays(id, b.sedeId, b.days || []);
+  @Get('students/:id/enrollments')
+  @RequirePermissions('enrollment.view')
+  getEnrollments(@Param('id') id: string) {
+    return this.svc.getStudentEnrollments(id);
+  }
+
+  @Get('students/:id/photo-info')
+  @RequirePermissions('enrollment.view')
+  getPhotoInfo(@Param('id') id: string, @Query() query: PhotoInfoQueryDto) {
+    return this.svc.replaceStudentPhoto(id, query.newDni);
+  }
+
+  @Patch('students/:id')
+  @RequirePermissions('enrollment.manage')
+  @Auditable('UPDATE', 'Estudiante')
+  updateStudent(@Param('id') id: string, @Body() dto: UpdateStudentDto) {
+    return this.svc.updatePerson(id, dto);
+  }
+
+  @Patch('students/:id/full')
+  @RequirePermissions('enrollment.manage')
+  @Auditable('UPDATE', 'Student')
+  updateStudentFull(@Param('id') id: string, @Body() dto: UpdateStudentFullDto) {
+    return this.svc.updateStudentFull(id, dto);
+  }
+
+  @Delete('students/:id')
+  @RequirePermissions('enrollment.manage')
+  @Auditable('DELETE', 'Estudiante')
+  deleteStudent(@Param('id') id: string) {
+    return this.svc.deletePerson(id);
+  }
+
+  // ===== DOCENTES =====
+  @Post('teachers')
+  @RequirePermissions('academic.manage')
+  @Auditable('CREATE', 'Docente')
+  createTeacher(@Body() dto: CreateTeacherDto) {
+    return this.svc.createTeacher(dto);
+  }
+
+  @Get('teachers')
+  @RequirePermissions('academic.view')
+  listTeachers(@Query() query: ListTeachersQueryDto) {
+    return this.svc.listTeachers(query.search);
+  }
+
+  @Patch('teachers/:profileId')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE', 'Docente')
+  updateTeacher(@Param('profileId') id: string, @Body() dto: UpdateTeacherProfileDto) {
+    return this.svc.updateTeacherProfile(id, dto);
+  }
+
+  @Patch('teachers/:profileId/full')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE', 'Docente')
+  updateTeacherFull(@Param('profileId') id: string, @Body() dto: UpdateTeacherFullDto) {
+    return this.svc.updateTeacherFull(id, dto);
+  }
+
+  @Put('teachers/:profileId/courses')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE_COURSE', 'Docente - Curso')
+  setCourses(@Param('profileId') id: string, @Body() dto: SetTeacherCoursesDto) {
+    return this.svc.setTeacherCourses(id, dto.courseIds || []);
+  }
+
+  @Put('teachers/:profileId/turnos')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE_TURNS', 'Docente - Turno')
+  setTurnos(@Param('profileId') id: string, @Body() dto: SetTeacherTurnosDto) {
+    return this.svc.setTeacherTurnos(id, dto.turnoIds || []);
+  }
+
+  @Put('teachers/:profileId/sedes')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE_SEDE', 'Docente - Sede')
+  setSedes(@Param('profileId') id: string, @Body() dto: SetTeacherSedesDto) {
+    return this.svc.setTeacherSedes(id, dto.sedeIds || []);
+  }
+
+  @Put('teachers/:profileId/unavailable-days')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE_AVAILABILITY', 'Docente - Disponibilidad')
+  setUnavailable(@Param('profileId') id: string, @Body() dto: SetTeacherUnavailableDaysDto) {
+    return this.svc.setTeacherUnavailableDays(id, dto.days || []);
+  }
+
+  @Delete('teachers/:profileId')
+  @RequirePermissions('academic.manage')
+  @Auditable('DELETE', 'Docente')
+  deleteTeacher(@Param('profileId') id: string) {
+    return this.svc.deleteTeacher(id);
+  }
+
+  @Put('teachers/:profileId/sede-days')
+  @RequirePermissions('academic.manage')
+  @Auditable('UPDATE_SEDE_DAYS', 'Docente - Disponibilidad - Sedes')
+  setSedeDays(@Param('profileId') id: string, @Body() dto: SetTeacherSedeDaysDto) {
+    return this.svc.setTeacherSedeDays(id, dto.sedeId, dto.days || []);
   }
 }

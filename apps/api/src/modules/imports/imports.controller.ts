@@ -7,6 +7,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 
+import { ImportFileParamDto, ImportFileBodyDto, ImportScheduleBodyDto } from './dto/imports.dto';
+
 @ApiTags('Importaciones')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -14,26 +16,36 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 export class ImportsController {
   constructor(private svc: ImportsService) {}
 
-  @Get('template/:type') @RequirePermissions('academic.manage')
-  async template(@Param('type') type: string, @Res() res: Response) {
-    const b = await this.svc.generateTemplate(type);
-    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="plantilla-${type}.xlsx"` });
+  @Get('template/:type')
+  @RequirePermissions('academic.manage')
+  async template(@Param() param: ImportFileParamDto, @Res() res: Response) {
+    const b = await this.svc.generateTemplate(param.type);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="plantilla-${param.type}.xlsx"`,
+    });
     res.send(b);
   }
 
-  @Post(':type') @RequirePermissions('academic.manage')
+  @Post(':type')
+  @RequirePermissions('academic.manage')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  async importFile(@Param('type') type: string, @UploadedFile() file: any, @Body('blockId') blockId?: string, @Body('sedeId') sedeId?: string) {
-    if (!file) throw new Error('Debes subir un archivo');
-    return this.svc.importFile(type, file.buffer, blockId, sedeId);
+  async importFile(
+    @Param() param: ImportFileParamDto,
+    @UploadedFile() file: any,
+    @Body() body: ImportFileBodyDto,
+  ) {
+    if (!file) throw new BadRequestException('Debes subir un archivo');
+    return this.svc.importFile(param.type, file.buffer, body.blockId, body.sedeId);
   }
 
-  @Post('horario') @RequirePermissions('academic.manage')
+  @Post('horario')
+  @RequirePermissions('academic.manage')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  async importSchedule(@UploadedFile() file: any, @Body('blockId') blockId: string, @Body('sedeId') sedeId?: string) {
+  async importSchedule(@UploadedFile() file: any, @Body() body: ImportScheduleBodyDto) {
     if (!file) throw new BadRequestException('Sube un archivo');
-    return this.svc.importSchedule(file.buffer, blockId, sedeId);
+    return this.svc.importSchedule(file.buffer, body.blockId, body.sedeId);
   }
 }

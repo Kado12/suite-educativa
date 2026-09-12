@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
+import { CreateWizardDto } from './dto/wizard.dto';
+import { CreateEnrollmentDto } from './dto/enrollment.dto';
+import { ExportEnrollmentsQueryDto, ListEnrollmentsQueryDto } from './dto/queries.dto';
+import { EnrollmentStatus } from '@suite/database';
 
 @Injectable()
 export class EnrollmentService {
@@ -14,10 +18,6 @@ export class EnrollmentService {
     }
   }
 
-  /**
-   * Verifica si un documento ya existe y si tiene matrícula activa en el período.
-   * El frontend lo usa para mostrar preview y bloquear si corresponde.
-   */
   async checkStudent(dni: string, periodId: string) {
     const person = await this.prisma.person.findUnique({
       where: { dni },
@@ -43,9 +43,6 @@ export class EnrollmentService {
     };
   }
 
-  /**
-   * Sugiere la mejor sección disponible: sede + turno + activa + con cupo, ordenada por prioridad.
-   */
   async suggestSection(sedeId: string, turnoId: string) {
     const sections = await this.prisma.section.findMany({
       where: { isActive: true, turnoId, classroom: { sedeId } },
@@ -71,14 +68,7 @@ export class EnrollmentService {
     return available[0] || null;
   }
 
-  /**
-   * Wizard: crea Person + Enrollment + Payments en una sola transacción.
-   */
-  async createWizard(d: {
-    firstName: string; lastName: string; docType: string; dni: string;
-    phone?: string; email?: string; birthDate?: string; gender?: string; photoUrl?: string;
-    sectionId: string; periodId: string; paymentPlanId: string; firstPaymentPaid: boolean;
-  }): Promise<any>  {
+  async createWizard(d: CreateWizardDto): Promise<any>  {
     this.validateDocument(d.docType, d.dni);
 
     const [section, period, plan] = await Promise.all([
@@ -246,12 +236,7 @@ export class EnrollmentService {
     });
   }
 
-  async create(d: {
-  studentId: string;
-  sectionId: string;
-  periodId: string;
-  paymentPlanId: string;
-  }): Promise<any> {
+  async create(d: CreateEnrollmentDto): Promise<any> {
     // Validar que exista todo
     const [student, section, period, plan] = await Promise.all([
       this.prisma.person.findUnique({ where: { id: d.studentId } }),
@@ -324,7 +309,7 @@ export class EnrollmentService {
     });
   }
 
-  async list(filters: { periodId?: string; sectionId?: string; status?: string; studentSearch?: string }): Promise<any> {
+  async list(filters: ListEnrollmentsQueryDto): Promise<any> {
     const where: any = {};
     if (filters.periodId) where.periodId = filters.periodId;
     if (filters.sectionId) where.sectionId = filters.sectionId;
@@ -350,10 +335,10 @@ export class EnrollmentService {
     });
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: EnrollmentStatus) {
     const e = await this.prisma.enrollment.findUnique({ where: { id } });
     if (!e) throw new NotFoundException('Matrícula no encontrada');
-    return this.prisma.enrollment.update({ where: { id }, data: { status: status as any } });
+    return this.prisma.enrollment.update({ where: { id }, data: { status } });
   }
 
   async delete(id: string) {
@@ -398,7 +383,7 @@ export class EnrollmentService {
     };
   }
 
-  async exportExcel(filters: { periodId?: string; sectionId?: string; status?: string; studentSearch?: string }): Promise<Buffer> {
+  async exportExcel(filters: ExportEnrollmentsQueryDto): Promise<Buffer> {
     const enrollments = await this.list(filters);
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Matriculas');

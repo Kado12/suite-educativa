@@ -4,13 +4,13 @@ import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private getTodayDate(): Date {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   }
-  
+
   private weekNumber(period: any, date: Date): number {
     const diff = date.getTime() - new Date(period.startDate).getTime();
     return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
@@ -157,26 +157,61 @@ export class DashboardService {
         .map(([w, g]) => ({ week: `S${w}`, rate: Math.round((g.present / g.total) * 100), hours: g.present * 3 }));
     }
 
-    // ===== Ocupación por sede (%) =====
+    // ===== Ocupación por sede (%) + cantidades =====
     const sections = await this.prisma.section.findMany({
       where: { isActive: true },
-      include: { classroom: { include: { sede: true } }, enrollments: { where: { status: 'ACTIVE' } } },
+      include: {
+        classroom: { include: { sede: true } },
+        enrollments: { where: { status: 'ACTIVE' } },
+        turno: true,
+      },
     });
-    const bySede = new Map<string, { enrolled: number; capacity: number }>();
+
+    // Por sede
+    const bySede = new Map<string, { enrolled: number; capacity: number; sections: number }>();
     for (const s of sections) {
       const name = s.classroom.sede.name;
-      if (!bySede.has(name)) bySede.set(name, { enrolled: 0, capacity: 0 });
+      if (!bySede.has(name)) bySede.set(name, { enrolled: 0, capacity: 0, sections: 0 });
       const g = bySede.get(name)!;
       g.enrolled += s.enrollments.length;
       g.capacity += s.capacity;
+      g.sections += 1;
     }
-    
+
     const occupancyBySede = Array.from(bySede.entries()).map(([sede, g]) => ({
       sede,
+      enrolled: g.enrolled,
+      capacity: g.capacity,
+      sections: g.sections,
       ocupacion: g.capacity > 0 ? Math.round((g.enrolled / g.capacity) * 100) : 0,
     }));
 
-    return { enrollmentsByMonth, paymentsDonut, byPaymentPlan, studentsBySede, distributionByTurno, attendanceByWeek, occupancyBySede };
+    // Por turno (cantidad de alumnos y secciones)
+    const byTurno = new Map<string, { enrolled: number; sections: number }>();
+    for (const s of sections) {
+      const name = s.turno.name;
+      if (!byTurno.has(name)) byTurno.set(name, { enrolled: 0, sections: 0 });
+      const g = byTurno.get(name)!;
+      g.enrolled += s.enrollments.length;
+      g.sections += 1;
+    }
+
+    const occupancyByTurno = Array.from(byTurno.entries()).map(([turno, g]) => ({
+      turno,
+      enrolled: g.enrolled,
+      sections: g.sections,
+    }));
+
+    return { 
+      enrollmentsByMonth, 
+      paymentsDonut, 
+      byPaymentPlan, 
+      studentsBySede, 
+      distributionByTurno, 
+      attendanceByWeek, 
+      occupancyBySede,
+      occupancyByTurno,
+    };
   }
 
   async exportStats(): Promise<Buffer> {
@@ -209,10 +244,21 @@ export class DashboardService {
     ws4.addRow(['Semana', '% Asistencia']); ws4.getRow(1).font = { bold: true };
     charts.attendanceByWeek.forEach((r: any) => ws4.addRow([r.week, r.rate]));
 
-    // Ocupación por sede
+    // Ocupación por sede (enriquecida)
     const ws5 = wb.addWorksheet('Ocupacion por sede');
-    ws5.addRow(['Sede', '% Ocupación']); ws5.getRow(1).font = { bold: true };
-    charts.occupancyBySede.forEach((r: any) => ws5.addRow([r.sede, r.ocupacion]));
+    ws5.addRow(['Sede', 'Alumnos', 'Capacidad', '% Ocupación', 'Secciones']); 
+    ws5.getRow(1).font = { bold: true };
+    charts.occupancyBySede.forEach((r: any) => 
+      ws5.addRow([r.sede, r.enrolled, r.capacity, r.ocupacion, r.sections])
+    );
+
+    // NUEVO: Ocupación por turno
+    const ws6 = wb.addWorksheet('Ocupacion por turno');
+    ws6.addRow(['Turno', 'Alumnos', 'Secciones']); 
+    ws6.getRow(1).font = { bold: true };
+    charts.occupancyByTurno.forEach((r: any) => 
+      ws6.addRow([r.turno, r.enrolled, r.sections])
+    );
 
     return Buffer.from(await wb.xlsx.writeBuffer());
   }

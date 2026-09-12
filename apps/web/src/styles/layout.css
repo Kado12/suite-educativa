@@ -299,3 +299,23 @@
   color: var(--color-neutral-500);
   margin: 0;
 }
+
+/* ===================== DARK MODE ADJUSTMENTS ===================== */
+html.dark .app-header {
+  background: var(--color-neutral-50);
+  border-bottom-color: var(--color-neutral-200);
+}
+
+html.dark .header-toggle:hover {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-900);
+}
+
+html.dark .header-user:hover {
+  background: var(--color-neutral-100);
+}
+
+/* Sidebar se mantiene oscuro en ambos temas (es azul institucional) */
+html.dark .sidebar {
+  background: #0d1b26; /* Un poco más oscuro para dark mode */
+}

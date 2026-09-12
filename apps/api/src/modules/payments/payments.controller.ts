@@ -7,6 +7,9 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 import { Auditable } from '../audit/audit.decorator';
 import { Response } from 'express';
 
+import { MarkPaidDto } from './dto/payment-operations.dto';
+import { ListPaymentsQueryDto, ExportPaymentsQueryDto, StatsQueryDto } from './dto/queries.dto';
+
 @ApiTags('Pagos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -14,35 +17,47 @@ import { Response } from 'express';
 export class PaymentsController {
   constructor(private svc: PaymentsService) {}
 
-  @Get() @RequirePermissions('payments.view')
-  list(
-    @Query('periodId') periodId?: string,
-    @Query('status') status?: string,
-    @Query('studentSearch') studentSearch?: string,
-  ): Promise<any> {
-    return this.svc.list({ periodId, status, studentSearch });
+  @Get()
+  @RequirePermissions('payments.view')
+  list(@Query() query: ListPaymentsQueryDto): Promise<any> {
+    return this.svc.list(query);
   }
 
-  @Get('stats') @RequirePermissions('payments.view')
-  stats(@Query('periodId') periodId?: string) {
-    return this.svc.getStats(periodId);
+  @Get('stats')
+  @RequirePermissions('payments.view')
+  stats(@Query() query: StatsQueryDto) {
+    return this.svc.getStats(query.periodId);
   }
 
-  @Get('export') @RequirePermissions('payments.view')
-  async export(@Query('periodId') periodId: string, @Query('status') status: string, @Query('studentSearch') studentSearch: string, @Res() res: Response) {
-    const b = await this.svc.exportExcel({ periodId, status, studentSearch });
-    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="pagos.xlsx"' });
+  @Get('export')
+  @RequirePermissions('payments.view')
+  async export(@Query() query: ExportPaymentsQueryDto, @Res() res: Response) {
+    const b = await this.svc.exportExcel(query);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="pagos.xlsx"',
+    });
     res.send(b);
   }
 
-  @Patch(':id/paid') @RequirePermissions('payments.manage') @Auditable('MARK_PAID', 'Payment')
-  markPaid(@Param('id') id: string, @Body() b: { paidAmount?: number; paidDate?: string; reference?: string }): Promise <any> {
-    return this.svc.markPaid(id, b.paidAmount, b.paidDate, b.reference);
+  @Patch(':id/paid')
+  @RequirePermissions('payments.manage')
+  @Auditable('MARK_PAID', 'Payment')
+  markPaid(@Param('id') id: string, @Body() dto: MarkPaidDto): Promise<any> {
+    return this.svc.markPaid(id, dto.paidAmount, dto.paidDate, dto.reference);
   }
 
-  @Patch(':id/overdue') @RequirePermissions('payments.manage') @Auditable('MARK_OVERDUE', 'Pago')
-  markOverdue(@Param('id') id: string): Promise<any> { return this.svc.markOverdue(id); }
+  @Patch(':id/overdue')
+  @RequirePermissions('payments.manage')
+  @Auditable('MARK_OVERDUE', 'Pago')
+  markOverdue(@Param('id') id: string): Promise<any> {
+    return this.svc.markOverdue(id);
+  }
 
-  @Patch(':id/reset') @RequirePermissions('payments.manage') @Auditable('RESET_PAYMENT', 'Pago')
-  reset(@Param('id') id: string): Promise<any> { return this.svc.resetToPending(id); }
+  @Patch(':id/reset')
+  @RequirePermissions('payments.manage')
+  @Auditable('RESET_PAYMENT', 'Pago')
+  reset(@Param('id') id: string): Promise<any> {
+    return this.svc.resetToPending(id);
+  }
 }

@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 
+import { GetDailyQueryDto, SaveDailyDto, GetWeeklyQueryDto } from './dto/attendance.dto';
+
 @ApiTags('Asistencia')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -12,22 +14,21 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 export class AttendanceController {
   constructor(private svc: AttendanceService) {}
 
-  @Get('daily') @RequirePermissions('attendance.view')
-  getDaily(@Query('date') date: string, @Query('sedeId') sedeId?: string) {
-    return this.svc.getDaily(date, sedeId);
+  @Get('daily')
+  @RequirePermissions('attendance.view')
+  getDaily(@Query() query: GetDailyQueryDto) {
+    return this.svc.getDaily(query.date, query.sedeId);
   }
 
-  @Post('daily') @RequirePermissions('attendance.manage')
-  saveDaily(@Body() body: { date: string; records: any[] }) {
-    return this.svc.saveDaily(body.date, body.records);
+  @Post('daily')
+  @RequirePermissions('attendance.manage')
+  saveDaily(@Body() dto: SaveDailyDto) {
+    return this.svc.saveDaily(dto.date, dto.records);
   }
 
-  @Get('weekly') @RequirePermissions('attendance.view')
-  getWeekly(
-    @Query('teacherProfileId') teacherProfileId: string,
-    @Query('periodId') periodId: string,
-    @Query('weekNumber') weekNumber: string,
-  ) {
-    return this.svc.getWeekly(teacherProfileId, periodId, parseInt(weekNumber) || 1);
+  @Get('weekly')
+  @RequirePermissions('attendance.view')
+  getWeekly(@Query() query: GetWeeklyQueryDto) {
+    return this.svc.getWeekly(query.teacherProfileId, query.periodId, query.weekNumber);
   }
 }

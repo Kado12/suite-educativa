@@ -17,6 +17,7 @@ export const ScheduleEditor: React.FC<{ block: any; onExit?: () => void }> = ({ 
   const [sessions, setSessions] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [blockCourses, setBlockCourses] = useState<any[]>([]);
 
   const [edit, setEdit] = useState<any | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -35,10 +36,26 @@ export const ScheduleEditor: React.FC<{ block: any; onExit?: () => void }> = ({ 
   useEffect(() => {
     peopleService.listTeachers().then(setTeachers);
     academicService.listSections().then(setSections);
-  }, []);
 
-  const courseOptions = (block?.blockCourses || []).map((bc: any) => ({ value: bc.courseId, label: bc.course.name }));
-  const teacherOptions = teachers.map((t: any) => ({ value: t.teacherProfile.id, label: `${t.lastName}, ${t.firstName}` }));
+    if (block?.id) {
+      academicService.listBlocks().then((blocks) => {
+        const fullBlock = blocks.find((b: any) => b.id === block.id);
+        if (fullBlock?.blockCourses) {
+          setBlockCourses(fullBlock.blockCourses);
+        }
+      });
+    }
+  }, [block?.id]);
+
+  const courseOptions = blockCourses.map((bc: any) => ({ 
+    value: bc.courseId, 
+    label: bc.course.name 
+  }));
+  
+  const teacherOptions = teachers.map((t: any) => ({ 
+    value: t.teacherProfile.id, 
+    label: `${t.lastName}, ${t.firstName}` 
+  }));
 
   // Filtrar sesiones
   const filteredSessions = useMemo(() => {

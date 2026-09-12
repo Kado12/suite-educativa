@@ -635,3 +635,62 @@
   width: 16px;
   height: 16px;
 }
+
+/* ===================== DARK MODE ADJUSTMENTS ===================== */
+html.dark .card {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+}
+
+html.dark .btn-secondary {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+  border-color: var(--color-neutral-300);
+}
+
+html.dark .btn-secondary:hover:not(:disabled) {
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-400);
+}
+
+html.dark .btn-ghost:hover:not(:disabled) {
+  background: var(--color-neutral-100);
+}
+
+html.dark .modal {
+  background: var(--color-neutral-50);
+}
+
+html.dark .toast {
+  background: var(--color-neutral-50);
+}
+
+html.dark .table thead {
+  background: var(--color-neutral-100);
+}
+
+html.dark .table tbody tr:hover {
+  background: var(--color-neutral-100);
+}
+
+html.dark .file-input {
+  background: var(--color-neutral-50);
+}
+
+html.dark .file-input:hover {
+  background: var(--color-primary-100);
+}
+
+/* Scrollbar en dark mode */
+html.dark ::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border: 2px solid var(--color-neutral-100);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}

@@ -1,10 +1,12 @@
 import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { ReportsService, GroupBy, ReportMode } from './reports.service';
+import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
+
+import { ConsolidatedQueryDto, PhysicalAttendanceQueryDto } from './dto/queries.dto';
 
 @ApiTags('Reportes')
 @ApiBearerAuth()
@@ -13,36 +15,59 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 export class ReportsController {
   constructor(private svc: ReportsService) {}
 
-  private parse(q: any) {
-    return {
-      periodId: q.periodId, mode: (q.mode || 'week') as ReportMode,
-      weekNumber: q.weekNumber ? parseInt(q.weekNumber) : undefined,
-      month: q.month, blockId: q.blockId, groupBy: (q.groupBy || 'teacher') as GroupBy,
-      sedeId: q.sedeId, areaId: q.areaId, courseId: q.courseId, teacherProfileId: q.teacherProfileId,
-    };
+  @Get('consolidated')
+  @RequirePermissions('reports.view')
+  getConsolidated(@Query() query: ConsolidatedQueryDto) {
+    return this.svc.getConsolidated({
+      periodId: query.periodId,
+      mode: query.mode || 'week',
+      weekNumber: query.weekNumber,
+      month: query.month,
+      blockId: query.blockId,
+      groupBy: query.groupBy || 'teacher',
+      sedeId: query.sedeId,
+      areaId: query.areaId,
+      courseId: query.courseId,
+      teacherProfileId: query.teacherProfileId,
+    });
   }
 
-  @Get('consolidated') @RequirePermissions('reports.view')
-  getConsolidated(@Query() q: any) { return this.svc.getConsolidated(this.parse(q)); }
-
-  @Get('export') @RequirePermissions('reports.view')
-  async exportExcel(@Query() q: any, @Res() res: Response) {
-    const buffer = await this.svc.exportExcel(this.parse(q));
+  @Get('export')
+  @RequirePermissions('reports.view')
+  async exportExcel(@Query() query: ConsolidatedQueryDto, @Res() res: Response) {
+    const buffer = await this.svc.exportExcel({
+      periodId: query.periodId,
+      mode: query.mode || 'week',
+      weekNumber: query.weekNumber,
+      month: query.month,
+      blockId: query.blockId,
+      groupBy: query.groupBy || 'teacher',
+      sedeId: query.sedeId,
+      areaId: query.areaId,
+      courseId: query.courseId,
+      teacherProfileId: query.teacherProfileId,
+    });
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="consolidado-${q.groupBy}.xlsx"`,
+      'Content-Disposition': `attachment; filename="consolidado-${query.groupBy || 'teacher'}.xlsx"`,
     });
     res.send(buffer);
   }
 
-  @Get('physical-attendance') @RequirePermissions('reports.view')
-  async physicalAttendance(
-    @Query('periodId') periodId: string, @Query('weekNumber') weekNumber: string,
-    @Query('sedeId') sedeId: string, @Query('turnoId') turnoId: string, @Query('sectionId') sectionId: string,
-    @Res() res: Response,
-  ) {
-    const b = await this.svc.exportPhysicalAttendance({ periodId, weekNumber: parseInt(weekNumber) || 1, sedeId, turnoId, sectionId });
-    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="asistencia-fisica.xlsx"' });
+  @Get('physical-attendance')
+  @RequirePermissions('reports.view')
+  async physicalAttendance(@Query() query: PhysicalAttendanceQueryDto, @Res() res: Response) {
+    const b = await this.svc.exportPhysicalAttendance({
+      periodId: query.periodId,
+      weekNumber: query.weekNumber || 1,
+      sedeId: query.sedeId,
+      turnoId: query.turnoId,
+      sectionId: query.sectionId,
+    });
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="asistencia-fisica.xlsx"',
+    });
     res.send(b);
   }
 }

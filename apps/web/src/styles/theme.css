@@ -1,5 +1,5 @@
+/* ===================== LIGHT MODE (DEFAULT) ===================== */
 :root {
-
   /* === AZUL INSTITUCIONAL (primario) === */
   --color-primary-50:   #F0F8FD;
   --color-primary-100:  #DBEEF9;
@@ -12,7 +12,7 @@
   --color-primary-800:  #0A5A8C;
   --color-primary-900:  #094C76;
 
-  /* === AMARILLO/DORADO (acento) — Sol UNSG === */
+  /* === AMARILLO/DORADO (acento) === */
   --color-accent-50:    #FFFBEB;
   --color-accent-100:   #FFF3C6;
   --color-accent-400:   #FFD34D;
@@ -20,35 +20,43 @@
   --color-accent-600:   #DBA500;
   --color-accent-700:   #B78900;
 
-  /* === NARANJA (warning) — Trapecio UNSG === */
+  /* === NARANJA (warning) === */
   --color-warning-50:   #FEF4E9;
   --color-warning-100:  #FDE5D0;
+  --color-warning-200:  #ffc288;
   --color-warning-500:  #EF8B2C;
   --color-warning-600:  #DD7413;
   --color-warning-700:  #B85E0F;
 
+  --color-extra-50:   #f6ddfc;
+  --color-extra-100:   #e3acfd;
+  --color-extra-200:   #eb82f6;
   --color-extra-400:   #f724fb;
   --color-extra-500:   #d20bf5;
   --color-extra-600:   #9d06d9;
 
-  /* === ROJO (danger) — Texto CEPU-UNICA === */
+  /* === ROJO (danger) === */
   --color-danger-50:    #FCEDEF;
   --color-danger-100:   #F8D8DC;
+  --color-danger-200:   #f2a8b1;
   --color-danger-500:   #D7263D;
   --color-danger-600:   #C01D33;
   --color-danger-700:   #9E1828;
 
-  /* === VERDE (success) — semántico === */
+  /* === VERDE (success) === */
   --color-success-50:   #EDFAF3;
+  --color-success-200:  #71d09a;
   --color-success-500:  #12A150;
+  --color-success-600:  #108844;
   --color-success-700:  #0B7A3E;
 
-  /* === INFO (usa el azul institucional) === */
+  /* === INFO === */
   --color-info-50:      #F0F8FD;
+  --color-info-200:     #BCE0F3;
   --color-info-500:     #2492CD;
   --color-info-600:     #0E7DC2;
 
-  /* === NEUTROS (sin cambio) === */
+  /* === NEUTROS (light mode) === */
   --color-neutral-0:    #ffffff;
   --color-neutral-50:   #f9fafb;
   --color-neutral-100:  #f3f4f6;
@@ -68,7 +76,7 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* === SOMBRAS (tono azul institucional) === */
+  /* === SOMBRAS (light mode) === */
   --shadow-sm: 0 1px 2px 0 rgba(9, 76, 118, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(9, 76, 118, 0.09), 0 2px 4px -1px rgba(9, 76, 118, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(9, 76, 118, 0.09), 0 4px 6px -2px rgba(9, 76, 118, 0.05);
@@ -111,4 +119,92 @@
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
+}
+
+/* ===================== DARK MODE ===================== */
+html.dark {
+  /* === AZUL INSTITUCIONAL (ajustado para dark) === */
+  --color-primary-50:   #0f1a23;
+  --color-primary-100:  #1a2b3a;
+  --color-primary-200:  #253d51;
+  --color-primary-300:  #325068;
+  --color-primary-400:  #3d6a8a;
+  --color-primary-500:  #4a8ab5;
+  --color-primary-600:  #5ba3d1;
+  --color-primary-700:  #7db8dd;
+  --color-primary-800:  #9fcde8;
+  --color-primary-900:  #c1e2f3;
+
+  /* === AMARILLO/DORADO (ajustado) === */
+  --color-accent-50:    #2a2410;
+  --color-accent-100:   #3d3415;
+  --color-accent-400:   #FFD34D;
+  --color-accent-500:   #FFC621;
+  --color-accent-600:   #e6b21e;
+  --color-accent-700:   #cc9e1a;
+
+  /* === NARANJA (warning) - ajustado === */
+  --color-warning-50:   #2a1f14;
+  --color-warning-100:  #3d2c1c;
+  --color-warning-200:  #503a26;
+  --color-warning-500:  #EF8B2C;
+  --color-warning-600:  #f0994a;
+  --color-warning-700:  #f2a768;
+
+  /* === MORADO (extra) - ajustado === */
+
+  --color-extra-50:   #3b343c;
+  --color-extra-100:   #715080;
+  --color-extra-200:   #7f4386;
+  --color-extra-400:   #f724fb;
+  --color-extra-500:   #eb82f6;
+  --color-extra-600:   #e3acfd;
+
+  /* === ROJO (danger) - ajustado === */
+  --color-danger-50:    #2a1517;
+  --color-danger-100:   #3d1f22;
+  --color-danger-200:   #50292d;
+  --color-danger-500:   #D7263D;
+  --color-danger-600:   #e04a5e;
+  --color-danger-700:   #e96e7f;
+
+  /* === VERDE (success) - ajustado === */
+  --color-success-50:   #0f2318;
+  --color-success-200:  #1c4a2f;
+  --color-success-500:  #12A150;
+  --color-success-600:  #2eb86d;
+  --color-success-700:  #4acf8a;
+
+  /* === INFO - ajustado === */
+  --color-info-50:      #0f1a23;
+  --color-info-200:     #253d51;
+  --color-info-500:     #4a8ab5;
+  --color-info-600:     #5ba3d1;
+
+  /* === NEUTROS (dark mode) === */
+  --color-neutral-0:    #111827;  /* fondo principal */
+  --color-neutral-50:   #1f2937;  /* fondo secundario */
+  --color-neutral-100:  #283548;  /* fondo terciario */
+  --color-neutral-200:  #374151;  /* bordes */
+  --color-neutral-300:  #4b5563;  /* bordes más claros */
+  --color-neutral-400:  #6b7280;  /* texto deshabilitado */
+  --color-neutral-500:  #9ca3af;  /* texto secundario */
+  --color-neutral-600:  #d1d5db;  /* texto primario */
+  --color-neutral-700:  #e5e7eb;  /* texto destacado */
+  --color-neutral-800:  #f3f4f6;  /* texto muy destacado */
+  --color-neutral-900:  #f9fafb;  /* texto máximo */
+
+  /* === SOMBRAS (dark mode) === */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* ===================== TRANSICIÓN SUAVE ENTRE TEMAS ===================== */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease !important;
 }

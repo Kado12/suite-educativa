@@ -9,6 +9,8 @@ import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
+import { ToolTemplateParamDto } from './dto/tools.dto';
+
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 @ApiTags('Herramientas')
@@ -40,26 +42,34 @@ export class ToolsController {
     }).catch(() => {});
   }
 
-  @Get('template/:type') @RequirePermissions('tools.view')
-  async template(@Param('type') type: string, @Res() res: Response) {
-    const b = await this.svc.generateToolTemplate(type);
-    res.set({ 'Content-Type': XLSX, 'Content-Disposition': `attachment; filename="plantilla-${type}.xlsx"` });
+  @Get('template/:type')
+  @RequirePermissions('tools.view')
+  async template(@Param() param: ToolTemplateParamDto, @Res() res: Response) {
+    const b = await this.svc.generateToolTemplate(param.type);
+    res.set({
+      'Content-Type': XLSX,
+      'Content-Disposition': `attachment; filename="plantilla-${param.type}.xlsx"`,
+    });
     res.send(b);
   }
 
-  @Post('preview') @RequirePermissions('tools.view')
+  @Post('preview')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   preview(@UploadedFile() file: any) {
-    if (!file) throw new Error('Sube un archivo');
+    if (!file) throw new BadRequestException('Debes subir un archivo');
     return this.svc.preview(file.buffer);
   }
 
-  @Post('compare') @RequirePermissions('tools.view')
+  @Post('compare')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileA', maxCount: 1 }, { name: 'fileB', maxCount: 1 }]))
   @ApiConsumes('multipart/form-data')
   async compare(@UploadedFiles() files: any, @Request() req) {
-    if (!files?.fileA?.[0] || !files?.fileB?.[0]) throw new Error('Sube ambos archivos');
+    if (!files?.fileA?.[0] || !files?.fileB?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileA y fileB)');
+    }
     const result = await this.svc.compare(files.fileA[0].buffer, files.fileB[0].buffer);
     this.logTool(req.user, 'COMPARE', {
       fileA: files.fileA[0].originalname,
@@ -69,17 +79,26 @@ export class ToolsController {
     return result;
   }
 
-  @Post('compare/export') @RequirePermissions('tools.view')
+  @Post('compare/export')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileA', maxCount: 1 }, { name: 'fileB', maxCount: 1 }]))
   async compareExport(@UploadedFiles() files: any, @Res() res: Response) {
+    if (!files?.fileA?.[0] || !files?.fileB?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileA y fileB)');
+    }
     const b = await this.svc.compareExport(files.fileA[0].buffer, files.fileB[0].buffer);
-    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="comparativa.xlsx"' }); res.send(b);
+    res.set({
+      'Content-Type': XLSX,
+      'Content-Disposition': 'attachment; filename="comparativa.xlsx"',
+    });
+    res.send(b);
   }
 
-  @Post('schedule/transform') @RequirePermissions('tools.view')
+  @Post('schedule/transform')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileInterceptor('file'))
   async transform(@UploadedFile() file: any, @Request() req) {
-    if (!file) throw new Error('Sube el archivo');
+    if (!file) throw new BadRequestException('Debes subir el archivo');
     const result = await this.svc.transformSchedule(file.buffer);
     this.logTool(req.user, 'TRANSFORM', {
       file: file.originalname,
@@ -88,18 +107,27 @@ export class ToolsController {
     return result;
   }
 
-  @Post('schedule/transform/export') @RequirePermissions('tools.view')
+  @Post('schedule/transform/export')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileInterceptor('file'))
   async transformExport(@UploadedFile() file: any, @Res() res: Response) {
+    if (!file) throw new BadRequestException('Debes subir el archivo');
     const b = await this.svc.scheduleExport(file.buffer);
-    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="horario_ordenado.xlsx"' }); res.send(b);
+    res.set({
+      'Content-Type': XLSX,
+      'Content-Disposition': 'attachment; filename="horario_ordenado.xlsx"',
+    });
+    res.send(b);
   }
 
-  @Post('cross') @RequirePermissions('tools.view')
+  @Post('cross')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileInfo', maxCount: 1 }, { name: 'fileSchedule', maxCount: 1 }]))
   @ApiConsumes('multipart/form-data')
   async cross(@UploadedFiles() files: any, @Request() req) {
-    if (!files?.fileInfo?.[0] || !files?.fileSchedule?.[0]) throw new Error('Sube ambos archivos');
+    if (!files?.fileInfo?.[0] || !files?.fileSchedule?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileInfo y fileSchedule)');
+    }
     const result = await this.svc.cross(files.fileInfo[0].buffer, files.fileSchedule[0].buffer);
     this.logTool(req.user, 'CROSS', {
       fileInfo: files.fileInfo[0].originalname,
@@ -109,18 +137,29 @@ export class ToolsController {
     return result;
   }
 
-  @Post('cross/export') @RequirePermissions('tools.view')
+  @Post('cross/export')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileInfo', maxCount: 1 }, { name: 'fileSchedule', maxCount: 1 }]))
   async crossExport(@UploadedFiles() files: any, @Res() res: Response) {
+    if (!files?.fileInfo?.[0] || !files?.fileSchedule?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileInfo y fileSchedule)');
+    }
     const b = await this.svc.crossExport(files.fileInfo[0].buffer, files.fileSchedule[0].buffer);
-    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="horario_con_dni.xlsx"' }); res.send(b);
+    res.set({
+      'Content-Type': XLSX,
+      'Content-Disposition': 'attachment; filename="horario_con_dni.xlsx"',
+    });
+    res.send(b);
   }
 
-    @Post('assignments') @RequirePermissions('tools.view')
+  @Post('assignments')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileSections', maxCount: 1 }, { name: 'fileCourses', maxCount: 1 }]))
   @ApiConsumes('multipart/form-data')
   async assignments(@UploadedFiles() files: any, @Request() req) {
-    if (!files?.fileSections?.[0] || !files?.fileCourses?.[0]) throw new BadRequestException('Sube ambos archivos');
+    if (!files?.fileSections?.[0] || !files?.fileCourses?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileSections y fileCourses)');
+    }
     const result = await this.svc.assignments(files.fileSections[0].buffer, files.fileCourses[0].buffer);
     this.logTool(req.user, 'ASSIGNMENTS', {
       fileSections: files.fileSections[0].originalname,
@@ -130,11 +169,18 @@ export class ToolsController {
     return result;
   }
 
-  @Post('assignments/export') @RequirePermissions('tools.view')
+  @Post('assignments/export')
+  @RequirePermissions('tools.view')
   @UseInterceptors(FileFieldsInterceptor([{ name: 'fileSections', maxCount: 1 }, { name: 'fileCourses', maxCount: 1 }]))
   async assignmentsExport(@UploadedFiles() files: any, @Res() res: Response) {
+    if (!files?.fileSections?.[0] || !files?.fileCourses?.[0]) {
+      throw new BadRequestException('Debes subir ambos archivos (fileSections y fileCourses)');
+    }
     const b = await this.svc.assignmentsExport(files.fileSections[0].buffer, files.fileCourses[0].buffer);
-    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="secciones_creadas.xlsx"' });
+    res.set({
+      'Content-Type': XLSX,
+      'Content-Disposition': 'attachment; filename="secciones_creadas.xlsx"',
+    });
     res.send(b);
   }
 }

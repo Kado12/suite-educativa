@@ -19,6 +19,7 @@ import { ConfigProvider } from './context/ConfigContext';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotificationProvider } from './context/NotificationContext';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ThemeProvider } from './context/ThemeContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -42,54 +43,56 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => (
   <ToastProvider>
-    <AuthProvider>
-      <ConfigProvider>
-        <NotificationProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/forgot-password"
-                element={
-                  <PublicRoute>
-                    <ForgotPasswordPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/academic" element={<AcademicPage />} />
-                <Route path="/people" element={<PeoplePage />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/enrollment" element={<EnrollmentPage />} />
-                <Route path="/scheduling" element={<SchedulingPage />} />
-                <Route path="/attendance" element={<AttendancePage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/imports" element={<ImportsPage />} />
-                <Route path="/tools" element={<ToolsPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                {/* Las demás rutas irán en fases siguientes */}
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </NotificationProvider>
-      </ConfigProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ConfigProvider>
+          <NotificationProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route
+                  path="/login"
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/forgot-password"
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/academic" element={<AcademicPage />} />
+                  <Route path="/people" element={<PeoplePage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/enrollment" element={<EnrollmentPage />} />
+                  <Route path="/scheduling" element={<SchedulingPage />} />
+                  <Route path="/attendance" element={<AttendancePage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/imports" element={<ImportsPage />} />
+                  <Route path="/tools" element={<ToolsPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  {/* Las demás rutas irán en fases siguientes */}
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </NotificationProvider>
+        </ConfigProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </ToastProvider>
 );
 

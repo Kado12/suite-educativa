@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EnrollmentService } from '../enrollment/enrollment.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
+import { StudentRecordParamDto, PaymentReceiptParamDto, StudentCardParamDto } from './dto/pdf.dto';
+
 @ApiTags('PDF')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -18,39 +20,57 @@ export class PdfController {
   ) {}
 
   @Get('student-record/:studentId')
-  async studentRecord(@Param('studentId') studentId: string, @Res() res: Response) {
-    const student = await this.prisma.person.findUnique({ where: { id: studentId } });
+  async studentRecord(@Param() param: StudentRecordParamDto, @Res() res: Response) {
+    const student = await this.prisma.person.findUnique({ where: { id: param.studentId } });
     if (!student) return res.status(404).json({ message: 'Alumno no encontrado' });
 
-    const enrollment = await this.enrollmentService.getActiveEnrollment(studentId);
+    const enrollment = await this.enrollmentService.getActiveEnrollment(param.studentId);
     const buffer = await this.pdfService.generateStudentRecord(student, enrollment);
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="ficha-${student.dni || studentId}.pdf"`,
+      'Content-Disposition': `attachment; filename="ficha-${student.dni || param.studentId}.pdf"`,
     });
     res.send(buffer);
   }
 
   @Get('payment-receipt/:paymentId')
-  async paymentReceipt(@Param('paymentId') id: string, @Res() res: Response) {
+  async paymentReceipt(@Param() param: PaymentReceiptParamDto, @Res() res: Response) {
     const payment = await this.prisma.payment.findUnique({
-      where: { id },
-      include: { enrollment: { include: { student: true, section: { include: { classroom: { include: { sede: true } } } }, period: true } }, paymentPlan: true },
+      where: { id: param.paymentId },
+      include: {
+        enrollment: {
+          include: {
+            student: true,
+            section: { include: { classroom: { include: { sede: true } } } },
+            period: true,
+          },
+        },
+        paymentPlan: true,
+      },
     });
     if (!payment) return res.status(404).json({ message: 'Pago no encontrado' });
+
     const buffer = await this.pdfService.generatePaymentReceipt(payment);
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="recibo-${payment.installment}.pdf"` });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="recibo-${payment.installment}.pdf"`,
+    });
     res.send(buffer);
   }
 
   @Get('student-card/:studentId')
-  async studentCard(@Param('studentId') id: string, @Res() res: Response) {
-    const student = await this.prisma.person.findUnique({ where: { id } });
+  async studentCard(@Param() param: StudentCardParamDto, @Res() res: Response) {
+    const student = await this.prisma.person.findUnique({ where: { id: param.studentId } });
     if (!student) return res.status(404).json({ message: 'Alumno no encontrado' });
-    const enrollment = await this.enrollmentService.getActiveEnrollment(id);
+
+    const enrollment = await this.enrollmentService.getActiveEnrollment(param.studentId);
     const buffer = await this.pdfService.generateStudentCard(student, enrollment);
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="carne-${student.dni || id}.pdf"` });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="carne-${student.dni || param.studentId}.pdf"`,
+    });
     res.send(buffer);
   }
 }

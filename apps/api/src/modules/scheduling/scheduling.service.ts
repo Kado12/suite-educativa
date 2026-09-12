@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@suite/database';
+import { CreateSessionDto, UpdateSessionDto } from './dto/session.dto';
+import { ExportSchedulingQueryDto } from './dto/queries.dto';
 
 interface TeacherInfo {
   id: string;
@@ -252,14 +254,14 @@ export class SchedulingService {
     if (cur) throw new ConflictException('La sección ya tiene ese curso en este bloque');
   }
 
-  async createSession(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string }) {
+  async createSession(d: CreateSessionDto) {
     const section = await this.prisma.section.findUnique({ where: { id: d.sectionId } });
     const full = { ...d, turnoId: section?.turnoId ?? null };
     await this.assertNoConflict(full);
     return this.prisma.scheduleSession.create({ data: { ...d, turnoId: section?.turnoId ?? null } });
   }
 
-  async updateSession(id: string, data: { courseId?: string; teacherProfileId?: string | null; dayOfWeek?: number; slot?: number }) {
+  async updateSession(id: string, data: UpdateSessionDto) {
     const ex = await this.prisma.scheduleSession.findUnique({ where: { id }, include: { section: true } });
     if (!ex) throw new NotFoundException('Sesión no encontrada');
     const merged = {
@@ -272,11 +274,6 @@ export class SchedulingService {
     await this.assertNoConflict(merged, id);
     return this.prisma.scheduleSession.update({ where: { id }, data: { courseId: merged.courseId, teacherProfileId: merged.teacherProfileId, dayOfWeek: merged.dayOfWeek, slot: merged.slot } });
   }
-
-  // async creataeSession(d: { sectionId: string; courseId: string; teacherProfileId?: string | null; dayOfWeek: number; slot: number; blockId: string }) {
-  //   await this.assertNoConflict(d);
-  //   return this.prisma.scheduleSession.create({ data: d });
-  // }
 
   async deleteSession(id: string) {
     const count = await this.prisma.attendanceRecord.count({ where: { sessionId: id } });
@@ -383,7 +380,7 @@ export class SchedulingService {
     return { deleted: r.count };
   }
 
-  async exportExcel(filters: { blockId: string; sedeId?: string; teacherProfileId?: string; areaId?: string; turnoId?: string; sectionId?: string }): Promise<Buffer> {
+  async exportExcel(filters: { blockId: string } & ExportSchedulingQueryDto): Promise<Buffer> {
     const ExcelJS = require('exceljs');
     const sessions = await this.prisma.scheduleSession.findMany({
       where: {

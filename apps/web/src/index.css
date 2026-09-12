@@ -21,5 +21,11 @@
 
 body {
   margin: 0;
-  background: #f3f4f6;
+  background: var(--color-neutral-50);
+  transition: background-color var(--transition-base);
+}
+
+/* Fondo del body en dark mode */
+html.dark body {
+  background: var(--color-neutral-0);
 }

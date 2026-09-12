@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceStatus } from '@suite/database';
+import { AttendanceRecordItemDto } from './dto/attendance.dto';
 
 const SESSION_HOURS = 3;
 const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
@@ -119,7 +120,7 @@ export class AttendanceService {
    * Guardar asistencia del día (upsert por sesión+fecha)
    * Ahora acepta overrides de docente y curso para snapshots históricos
    */
-  async saveDaily(dateStr: string, records: { sessionId: string; status: AttendanceStatus; lateMinutes?: number; teacherProfileId?: string | null; courseId?: string | null }[]) {
+  async saveDaily(dateStr: string, records: AttendanceRecordItemDto[]) {
     const date = parseDate(dateStr);
     const dow = date.getUTCDay();
     if (dow < 1 || dow > 5) throw new BadRequestException('No se puede registrar asistencia en fin de semana');

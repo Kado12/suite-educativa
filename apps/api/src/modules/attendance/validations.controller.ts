@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 
+import { GetWeekStatusQueryDto, SetStatusDto } from './dto/validations.dto';
+
 @ApiTags('Validaciones')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -12,13 +14,15 @@ import { RequirePermissions } from '../../auth/decorators/permissions.decorator'
 export class ValidationsController {
   constructor(private svc: ValidationsService) {}
 
-  @Get() @RequirePermissions('attendance.view')
-  getWeekStatus(@Query('periodId') periodId: string, @Query('weekNumber') weekNumber: string) {
-    return this.svc.getWeekStatus(periodId, parseInt(weekNumber) || 1);
+  @Get()
+  @RequirePermissions('attendance.view')
+  getWeekStatus(@Query() query: GetWeekStatusQueryDto) {
+    return this.svc.getWeekStatus(query.periodId, query.weekNumber);
   }
 
-  @Post() @RequirePermissions('attendance.validate')
-  setStatus(@Body() body: any, @Request() req) {
-    return this.svc.setStatus(body, req.user.id);
+  @Post()
+  @RequirePermissions('attendance.validate')
+  setStatus(@Body() dto: SetStatusDto, @Request() req) {
+    return this.svc.setStatus(dto, req.user.id);
   }
 }

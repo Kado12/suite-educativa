@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as ExcelJS from 'exceljs'
+import { ExportPaymentsQueryDto, ListPaymentsQueryDto } from './dto/queries.dto';
 
 @Injectable()
 export class PaymentsService {
   constructor(private prisma: PrismaService) {}
 
-  async list(filters: { periodId?: string; status?: string; studentSearch?: string }): Promise<any> {
+  async list(filters: ListPaymentsQueryDto): Promise<any> {
     const where: any = {};
     if (filters.status) where.status = filters.status;
     if (filters.periodId) where.enrollment = { periodId: filters.periodId };
@@ -90,7 +91,7 @@ export class PaymentsService {
     };
   }
 
-    async exportExcel(filters: { periodId?: string; status?: string; studentSearch?: string }): Promise<Buffer> {
+    async exportExcel(filters: ExportPaymentsQueryDto): Promise<Buffer> {
     const [payments, stats] = await Promise.all([this.list(filters), this.getStats(filters.periodId)]);
 
     const wb = new ExcelJS.Workbook();

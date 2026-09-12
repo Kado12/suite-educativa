@@ -4,13 +4,14 @@ import { SettingsService } from './settings.service';
 import { RequirePermissions } from '../../auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-// NOTA: NO tiene @UseGuards(JwtAuthGuard) en el endpoint público
+
+import { UpdateSettingsDto, LogoType } from './dto/settings.dto';
 
 @Controller('settings')
 export class SettingsController {
   constructor(private svc: SettingsService) {}
 
-  // En settings.controller.ts, agrega temporalmente:
+  // Endpoint de debug (temporal, remover en producción)
   @Get('debug-cloudinary')
   async debugCloudinary() {
     const { v2: cloudinary } = await import('cloudinary');
@@ -42,8 +43,8 @@ export class SettingsController {
   @Patch()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('academic.manage')
-  update(@Body() body: Record<string, string>) {
-    return this.svc.updateMany(body);
+  update(@Body() body: UpdateSettingsDto) {
+    return this.svc.updateMany(body as Record<string, string>);
   }
 
   @Delete(':key')
@@ -57,7 +58,7 @@ export class SettingsController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('academic.manage')
   @UseInterceptors(FileInterceptor('file'))
-  uploadLogo(@Param('which') which: 'main' | 'second', @UploadedFile() file: any) {
+  uploadLogo(@Param('which') which: LogoType, @UploadedFile() file: any) {
     return this.svc.uploadLogo(which, file);
   }
 }
