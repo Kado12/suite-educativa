@@ -192,9 +192,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           }}
         >
           {!collapsed && (
-            <p>Cerrar sesión</p>
+            <p style={{color: 'var(--color-neutral-0)' }} >Cerrar sesión</p>
           )}
-          <ArrowRightOnRectangleIcon style={{ width: 18, height: 18, color: 'var(--color-neutral-200)' }} />
+          <ArrowRightOnRectangleIcon style={{ width: 18, height: 18, color: 'var(--color-neutral-0)' }} />
         </button>
       </div>
     </aside>

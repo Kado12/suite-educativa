@@ -1,7 +1,9 @@
+/* ===================== AUTH PAGE (LIGHT + DARK) ===================== */
 .auth-page {
   min-height: 100vh;
   display: flex;
-  background: linear-gradient(135deg, var(--color-primary-900) 0%, var(--color-primary-700) 100%);
+  /* Colores de marca - consistentes en ambos temas */
+  background: linear-gradient(135deg, #094C76 0%, #0C659E 100%);
   position: relative;
   overflow: hidden;
 }
@@ -26,6 +28,15 @@
   height: 500px;
   background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
   border-radius: 50%;
+}
+
+/* En dark mode, suavizar los efectos decorativos */
+html.dark .auth-page::before {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 70%);
+}
+
+html.dark .auth-page::after {
+  background: radial-gradient(circle, rgba(91, 163, 209, 0.15) 0%, transparent 70%);
 }
 
 .auth-left {
@@ -68,6 +79,7 @@
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
   letter-spacing: -0.01em;
+  color: white;
 }
 
 .auth-headline {
@@ -77,11 +89,12 @@
   margin-bottom: var(--space-4);
   letter-spacing: -0.02em;
   max-width: 500px;
+  color: white;
 }
 
 .auth-subheadline {
   font-size: var(--text-lg);
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   max-width: 450px;
   line-height: 1.6;
 }
@@ -98,14 +111,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .auth-feature-icon {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,7 +128,7 @@
 .auth-feature-icon svg {
   width: 18px;
   height: 18px;
-  color: var(--color-accent-400);
+  color: #FFD34D;
 }
 
 .auth-right {
@@ -128,12 +141,21 @@
   z-index: 2;
 }
 
+/* ===================== AUTH CARD (se adapta al tema) ===================== */
 .auth-card {
   background: var(--color-neutral-0);
   border-radius: var(--radius-xl);
   padding: var(--space-10);
   box-shadow: var(--shadow-xl);
   width: 100%;
+  border: 1px solid var(--color-neutral-200);
+  transition: background-color var(--transition-base), border-color var(--transition-base);
+}
+
+/* En dark mode, agregar un borde más sutil */
+html.dark .auth-card {
+  border-color: var(--color-neutral-200);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .auth-card-title {
@@ -149,12 +171,42 @@
   font-size: var(--text-sm);
 }
 
+/* En dark mode el subtítulo debe ser más claro para contraste */
+html.dark .auth-card-subtitle {
+  color: var(--color-neutral-500);
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
 }
 
+/* ===================== INPUTS dentro del auth-card ===================== */
+/* Los inputs globales ya se adaptan, pero reforzamos el estilo aquí */
+.auth-card .input,
+.auth-card .select {
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
+  color: var(--color-neutral-900);
+}
+
+.auth-card .input:focus,
+.auth-card .select:focus {
+  background: var(--color-neutral-0);
+  border-color: var(--color-primary-500);
+}
+
+.auth-card .input::placeholder {
+  color: var(--color-neutral-400);
+}
+
+/* Labels en dark mode */
+html.dark .auth-card .input-label {
+  color: var(--color-neutral-600);
+}
+
+/* ===================== AUTH ERROR ===================== */
 .auth-error {
   background: var(--color-danger-50);
   border: 1px solid var(--color-danger-500);
@@ -167,16 +219,49 @@
   gap: var(--space-2);
 }
 
+/* ===================== AUTH FOOTER ===================== */
 .auth-footer {
   margin-top: var(--space-8);
   text-align: center;
   font-size: var(--text-xs);
-  color: var(--color-neutral-400);
+  color: var(--color-neutral-500);
 }
 
+/* El footer interno con info (caja gris) */
+.auth-card .auth-footer > div {
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-600);
+}
+
+/* ===================== ENLACES dentro del auth-card ===================== */
+.auth-card a,
+.auth-card button[style*="color"] {
+  transition: opacity var(--transition-fast);
+}
+
+.auth-card a:hover,
+.auth-card button[style*="color"]:hover {
+  opacity: 0.85;
+}
+
+/* ===================== BOTONES (mostrar/ocultar contraseña) ===================== */
+.auth-card button[type="button"] {
+  transition: color var(--transition-fast);
+}
+
+/* ===================== RESPONSIVE ===================== */
 @media (max-width: 900px) {
   .auth-left { display: none; }
-  .auth-right { width: 100%; }
-  .auth-page { background: var(--color-neutral-50); }
-  .auth-card { box-shadow: var(--shadow-md); }
+  .auth-right { width: 100%; padding: var(--space-4); }
+  .auth-page {
+    background: var(--color-neutral-50);
+  }
+  /* En dark mode móvil, mantener fondo oscuro */
+  html.dark .auth-page {
+    background: var(--color-neutral-0);
+  }
+  .auth-card { 
+    box-shadow: var(--shadow-md);
+    padding: var(--space-6);
+  }
 }
