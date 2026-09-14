@@ -1,23 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Button, Input, Select, SearchableSelect, Badge } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { attendanceService } from '../../../api/attendance.service';
 import { academicService } from '../../../api/academic.service';
 import { peopleService } from '../../../api/people.service';
-import { 
+import {
   CalendarIcon, MapPinIcon, CheckCircleIcon, XCircleIcon,
   ClockIcon, UsersIcon, BuildingOfficeIcon,
-  ExclamationTriangleIcon, SparklesIcon
+  ExclamationTriangleIcon, SparklesIcon, AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
 interface Mark { status: 'PRESENT' | 'ABSENT'; lateMinutes: number; }
 interface RowSelection { teacherId: string; courseId: string; }
+
+type SortMode = 'sede-slot' | 'classroom-slot' | 'teacher';
 
 const todayStr = () => {
   const d = new Date();
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().split('T')[0];
 };
+
+const SORT_MODE_KEY = 'attendance-sort-mode';
 
 export const DailyTab: React.FC = () => {
   const { success, error } = useToast();
@@ -31,6 +35,17 @@ export const DailyTab: React.FC = () => {
   const [rowSel, setRowSel] = useState<Record<string, RowSelection>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Estado de ordenamiento con persistencia
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    const saved = localStorage.getItem(SORT_MODE_KEY);
+    return (saved as SortMode) || 'sede-slot';
+  });
+
+  // Persistir cambio de modo
+  useEffect(() => {
+    localStorage.setItem(SORT_MODE_KEY, sortMode);
+  }, [sortMode]);
 
   useEffect(() => {
     academicService.listSedes().then(setSedes);
@@ -113,6 +128,79 @@ export const DailyTab: React.FC = () => {
     label: c.name,
   }));
 
+  // Agrupar y ordenar clases según el modo seleccionado
+  const groupedClasses = useMemo(() => {
+    if (!data?.classes) return [];
+
+    const classes = [...data.classes];
+
+    if (sortMode === 'sede-slot') {
+      // Orden actual: por sede y luego por slot
+      return classes.sort((a, b) => {
+        const sedeA = a.section.classroom.sede.name;
+        const sedeB = b.section.classroom.sede.name;
+        if (sedeA !== sedeB) return sedeA.localeCompare(sedeB);
+        return a.slot - b.slot;
+      });
+    }
+
+    if (sortMode === 'classroom-slot') {
+      // Agrupar por salón (sede + salón) y ordenar por slot
+      const groups = new Map<string, any[]>();
+
+      classes.sort((a, b) => {
+        const classroomA = `${a.section.classroom.sede.name} - ${a.section.classroom.name}`;
+        const classroomB = `${b.section.classroom.sede.name} - ${b.section.classroom.name}`;
+        if (classroomA !== classroomB) return classroomA.localeCompare(classroomB);
+        return a.slot - b.slot;
+      });
+
+      classes.forEach((c) => {
+        const key = `${c.section.classroom.sede.name} - ${c.section.classroom.name}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(c);
+      });
+
+      // Retornar array con headers de grupo
+      const result: any[] = [];
+      groups.forEach((groupClasses, key) => {
+        result.push({ type: 'group-header', label: key, count: groupClasses.length });
+        result.push(...groupClasses);
+      });
+      return result;
+    }
+
+    if (sortMode === 'teacher') {
+      // Agrupar por docente
+      const groups = new Map<string, any[]>();
+
+      classes.forEach((c) => {
+        const teacherName = c.teacherProfile
+          ? `${c.teacherProfile.person.lastName}, ${c.teacherProfile.person.firstName}`
+          : 'Sin docente asignado';
+        if (!groups.has(teacherName)) groups.set(teacherName, []);
+        groups.get(teacherName)!.push(c);
+      });
+
+      // Ordenar grupos alfabéticamente y clases dentro de cada grupo por slot
+      const sortedGroups = Array.from(groups.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([teacher, teacherClasses]) => ({
+          teacher,
+          classes: teacherClasses.sort((a, b) => a.slot - b.slot)
+        }));
+
+      const result: any[] = [];
+      sortedGroups.forEach(({ teacher, classes: teacherClasses }) => {
+        result.push({ type: 'group-header', label: teacher, count: teacherClasses.length });
+        result.push(...teacherClasses);
+      });
+      return result;
+    }
+
+    return classes;
+  }, [data?.classes, sortMode]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Card de configuración */}
@@ -140,23 +228,33 @@ export const DailyTab: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
-          <Input 
-            label="Fecha" 
-            type="date" 
-            value={date} 
+          <Input
+            label="Fecha"
+            type="date"
+            value={date}
             onChange={(e) => setDate(e.target.value)}
             icon={<CalendarIcon />}
           />
-          <Select 
-            label="Sede" 
-            value={filterSede} 
+          <Select
+            label="Sede"
+            value={filterSede}
             onChange={(e) => setFilterSede(e.target.value)}
-            options={[{ value: '', label: 'Todas las sedes' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]} 
+            options={[{ value: '', label: 'Todas las sedes' }, ...sedes.map((s) => ({ value: s.id, label: s.name }))]}
+          />
+          <Select
+            label="Ordenar por"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            options={[
+              { value: 'sede-slot', label: 'Sede y Slot' },
+              { value: 'classroom-slot', label: 'Salón y Slot' },
+              { value: 'teacher', label: 'Docente' },
+            ]}
           />
         </div>
         {data && (
-          <div style={{ 
-            padding: '12px 16px', 
+          <div style={{
+            padding: '12px 16px',
             background: 'linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-info-50) 100%)',
             border: '1px solid var(--color-primary-200)',
             borderRadius: 8,
@@ -178,17 +276,17 @@ export const DailyTab: React.FC = () => {
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={markAll}
             icon={<SparklesIcon />}
             disabled={!data || data.classes.length === 0}
           >
             Marcar todas como asistidas
           </Button>
-          <Button 
-            variant="success" 
-            onClick={handleSave} 
+          <Button
+            variant="success"
+            onClick={handleSave}
             isLoading={saving}
             loadingText="Guardando..."
             icon={<CheckCircleIcon />}
@@ -206,30 +304,30 @@ export const DailyTab: React.FC = () => {
             const pct = c.total > 0 ? Math.round((c.marked / c.total) * 100) : 0;
             const isComplete = c.marked === c.total;
             return (
-              <Card 
-                key={c.sedeName} 
-                className="p-4" 
-                style={{ 
+              <Card
+                key={c.sedeName}
+                className="p-4"
+                style={{
                   borderColor: isComplete ? 'var(--color-success-700)' : 'var(--color-warning-600)',
                   background: isComplete ? 'var(--color-success-50)' : 'var(--color-warning-50)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <BuildingOfficeIcon style={{ 
-                    width: 20, 
-                    height: 20, 
-                    color: isComplete ? 'var(--color-success-600)' : 'var(--color-warning-600)' 
+                  <BuildingOfficeIcon style={{
+                    width: 20,
+                    height: 20,
+                    color: isComplete ? 'var(--color-success-600)' : 'var(--color-warning-600)'
                   }} />
-                  <span style={{ 
-                    fontSize: 'var(--text-sm)', 
+                  <span style={{
+                    fontSize: 'var(--text-sm)',
                     fontWeight: 600,
                     color: isComplete ? 'var(--color-success-700)' : 'var(--color-warning-700)'
                   }}>
                     {c.sedeName}
                   </span>
                 </div>
-                <div style={{ 
-                  fontSize: 'var(--text-xs)', 
+                <div style={{
+                  fontSize: 'var(--text-xs)',
                   color: isComplete ? 'var(--color-success-600)' : 'var(--color-warning-600)',
                   display: 'flex',
                   alignItems: 'center',
@@ -270,8 +368,8 @@ export const DailyTab: React.FC = () => {
         </Card>
       ) : data ? (
         <Card className="p-0">
-          <div style={{ 
-            padding: '16px 20px', 
+          <div style={{
+            padding: '16px 20px',
             borderBottom: '1px solid var(--color-neutral-200)',
             background: 'var(--color-neutral-50)'
           }}>
@@ -298,7 +396,34 @@ export const DailyTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.classes.map((c: any) => {
+                {groupedClasses.map((item: any, idx: number) => {
+                  // Renderizar header de grupo
+                  if (item.type === 'group-header') {
+                    return (
+                      <tr key={`group-${idx}`}>
+                        <td colSpan={6} style={{
+                          padding: '12px 16px',
+                          background: 'var(--color-neutral-100)',
+                          fontWeight: 600,
+                          fontSize: 'var(--text-sm)',
+                          color: 'var(--color-neutral-700)',
+                          borderBottom: '2px solid var(--color-neutral-300)',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {sortMode === 'classroom-slot' && <BuildingOfficeIcon style={{ width: 16, height: 16 }} />}
+                            {sortMode === 'teacher' && <AcademicCapIcon style={{ width: 16, height: 16 }} />}
+                            <span>{item.label}</span>
+                            <Badge color="neutral">
+                              {item.count} {item.count === 1 ? 'clase' : 'clases'}
+                            </Badge>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // Renderizar fila de clase
+                  const c = item;
                   const m = marks[c.id];
                   const sel = rowSel[c.id];
                   return (
@@ -332,7 +457,7 @@ export const DailyTab: React.FC = () => {
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                          <button 
+                          <button
                             onClick={() => setMark(c.id, { status: 'PRESENT' })}
                             className={`btn btn-sm ${m?.status === 'PRESENT' ? 'btn-success' : 'btn-ghost'}`}
                             style={{ minWidth: 80 }}
@@ -340,7 +465,7 @@ export const DailyTab: React.FC = () => {
                             <CheckCircleIcon style={{ width: 14, height: 14, marginRight: 4 }} />
                             Asistió
                           </button>
-                          <button 
+                          <button
                             onClick={() => setMark(c.id, { status: 'ABSENT' })}
                             className={`btn btn-sm ${m?.status === 'ABSENT' ? 'btn-danger' : 'btn-ghost'}`}
                             style={{ minWidth: 60 }}
@@ -354,12 +479,12 @@ export const DailyTab: React.FC = () => {
                         {m?.status === 'PRESENT' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
                             <ClockIcon style={{ width: 14, height: 14, color: 'var(--color-neutral-400)' }} />
-                            <input 
-                              type="number" 
-                              min={0} 
+                            <input
+                              type="number"
+                              min={0}
                               value={m.lateMinutes}
                               onChange={(e) => setMark(c.id, { lateMinutes: parseInt(e.target.value) || 0 })}
-                              style={{ width: 70 }} 
+                              style={{ width: 70 }}
                               className="input"
                               placeholder="0"
                             />

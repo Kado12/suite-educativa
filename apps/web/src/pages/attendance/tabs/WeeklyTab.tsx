@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, Badge } from '@suite/ui';
+import { Card, Select, Badge, SearchableSelect } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
 import { attendanceService } from '../../../api/attendance.service';
 import { academicService } from '../../../api/academic.service';
 import { peopleService } from '../../../api/people.service';
-import { 
+import {
   CalendarIcon, ClockIcon, CheckCircleIcon, XCircleIcon,
   ExclamationCircleIcon, DocumentChartBarIcon
 } from '@heroicons/react/24/outline';
@@ -71,23 +71,28 @@ export const WeeklyTab: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-          <Select 
-            label="Docente" 
-            value={teacherId} 
-            onChange={(e) => setTeacherId(e.target.value)}
-            options={[{ value: '', label: 'Selecciona docente' }, ...teachers.map((t) => ({ value: t.teacherProfile.id, label: `${t.lastName}, ${t.firstName}` }))]} 
+          <SearchableSelect
+            label="Docente"
+            value={teacherId}
+            onChange={(v) => setTeacherId(v)}
+            options={teachers.map((t) => ({
+              value: t.teacherProfile.id,
+              label: `${t.lastName}, ${t.firstName}`,
+              hint: t.dni,
+            }))}
+            placeholder="Buscar docente por nombre..."
           />
-          <Select 
-            label="Período" 
-            value={periodId} 
+          <Select
+            label="Período"
+            value={periodId}
             onChange={(e) => setPeriodId(e.target.value)}
-            options={periods.map((p) => ({ value: p.id, label: p.name }))} 
+            options={periods.map((p) => ({ value: p.id, label: p.name }))}
           />
-          <Select 
-            label="Semana" 
-            value={week} 
+          <Select
+            label="Semana"
+            value={week}
             onChange={(e) => setWeek(e.target.value)}
-            options={Array.from({ length: selectedPeriod?.weeks || 12 }, (_, i) => ({ value: String(i + 1), label: `Semana ${i + 1}` }))} 
+            options={Array.from({ length: selectedPeriod?.weeks || 12 }, (_, i) => ({ value: String(i + 1), label: `Semana ${i + 1}` }))}
           />
         </div>
       </Card>
@@ -129,8 +134,8 @@ export const WeeklyTab: React.FC = () => {
 
           {/* Tabla resumen semanal */}
           <Card className="p-0">
-            <div style={{ 
-              padding: '16px 20px', 
+            <div style={{
+              padding: '16px 20px',
               borderBottom: '1px solid var(--color-neutral-200)',
               background: 'var(--color-neutral-50)'
             }}>
@@ -170,7 +175,7 @@ export const WeeklyTab: React.FC = () => {
                         {d.classes.length === 0 ? (
                           <span style={{ color: 'var(--color-neutral-300)' }}>—</span>
                         ) : (
-                          <Badge 
+                          <Badge
                             color={d.hours > 0 ? 'success' : d.isFuture ? 'neutral' : 'danger'}
                           >
                             {d.hours > 0 ? d.hours : d.isFuture ? '—' : 'F'}
@@ -212,18 +217,18 @@ export const WeeklyTab: React.FC = () => {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
               {weekly.days.map((d: any) => (
-                <div 
-                  key={d.date} 
-                  style={{ 
-                    border: `1px solid ${d.absents > 0 ? 'var(--color-danger-300)' : 'var(--color-neutral-200)'}`, 
-                    borderRadius: 12, 
-                    padding: 16, 
-                    background: d.absents > 0 ? 'var(--color-danger-50)' : 'var(--color-neutral-50)' 
+                <div
+                  key={d.date}
+                  style={{
+                    border: `1px solid ${d.absents > 0 ? 'var(--color-danger-300)' : 'var(--color-neutral-200)'}`,
+                    borderRadius: 12,
+                    padding: 16,
+                    background: d.absents > 0 ? 'var(--color-danger-50)' : 'var(--color-neutral-50)'
                   }}
                 >
-                  <div style={{ 
-                    fontWeight: 700, 
-                    fontSize: 'var(--text-sm)', 
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: 'var(--text-sm)',
                     marginBottom: 12,
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -235,8 +240,8 @@ export const WeeklyTab: React.FC = () => {
                     </span>
                   </div>
                   {d.classes.length === 0 ? (
-                    <div style={{ 
-                      fontSize: 'var(--text-xs)', 
+                    <div style={{
+                      fontSize: 'var(--text-xs)',
                       color: 'var(--color-neutral-400)',
                       textAlign: 'center',
                       padding: '16px 0'
@@ -245,15 +250,15 @@ export const WeeklyTab: React.FC = () => {
                     </div>
                   ) : (
                     d.classes.map((c: any, idx: number) => (
-                      <div 
-                        key={idx} 
-                        style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
-                          gap: 8, 
-                          padding: '10px 0', 
-                          borderBottom: idx < d.classes.length - 1 ? '1px dashed var(--color-neutral-200)' : 'none' 
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '10px 0',
+                          borderBottom: idx < d.classes.length - 1 ? '1px dashed var(--color-neutral-200)' : 'none'
                         }}
                       >
                         <div style={{ minWidth: 0, flex: 1 }}>
