@@ -112,7 +112,11 @@ export class AcademicController {
   @Get('sections')
   @RequirePermissions('academic.view')
   listSections(@Query() query: ListSectionsQueryDto) {
-    return this.svc.listSections(query.onlyActive === true);
+    return this.svc.listSections({
+      onlyActive: query.onlyActive,
+      sedeId: query.sedeId,
+      turnoId: query.turnoId,
+    });
   }
 
   @Get('sections/export')

@@ -16,7 +16,8 @@ export const academicService = {
   updateClassroom: (id: string, d: any) => api.patch(`/api/academic/classrooms/${id}`, d).then((r) => r.data),
   deleteClassroom: (id: string) => api.delete(`/api/academic/classrooms/${id}`).then((r) => r.data),
   // Secciones
-  listSections: (onlyActive = false) => api.get('/api/academic/sections', { params: { onlyActive: String(onlyActive) } }).then((r) => r.data),
+  listSections: (filters?: { onlyActive?: boolean; sedeId?: string; turnoId?: string }) => 
+    api.get('/api/academic/sections', { params: filters }).then((r) => r.data),
   toggleSection: (id: string) => api.patch(`/api/academic/sections/${id}/toggle`).then((r) => r.data),
   createSection: (d: any) => api.post('/api/academic/sections', d).then((r) => r.data),
   updateSectionFull: (id: string, d: any) => api.patch(`/api/academic/sections/${id}/full`, d).then((r) => r.data),

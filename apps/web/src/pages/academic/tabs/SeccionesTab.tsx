@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlusIcon, TrashIcon, PencilIcon, ClockIcon, BuildingOfficeIcon, 
   PowerIcon, ArrowDownTrayIcon, MagnifyingGlassIcon, XCircleIcon,
-  UserGroupIcon, MapPinIcon
+  UserGroupIcon, MapPinIcon, FunnelIcon
 } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, SearchableSelect, Pagination } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
@@ -18,8 +18,11 @@ export const SeccionesTab: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Búsqueda
+  // Búsqueda y filtros
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [filterTurno, setFilterTurno] = useState('');
+  const [filterSede, setFilterSede] = useState('');
 
   // Turno
   const [showTurno, setShowTurno] = useState(false);
@@ -39,6 +42,7 @@ export const SeccionesTab: React.FC = () => {
     academicService.listSections().then(setSections),
     academicService.listSedes().then(setSedes),
   ]).catch(() => error('Error al cargar'));
+
   useEffect(() => { load(); }, []);
 
   const classroomOptions = useMemo(() =>
@@ -50,17 +54,40 @@ export const SeccionesTab: React.FC = () => {
     [sedes],
   );
 
-  // Filtrado por búsqueda
+  // ===== FILTRADO COMPLETO EN FRONTEND =====
   const filteredSections = useMemo(() => {
-    if (!search.trim()) return sections;
-    const s = search.toLowerCase();
-    return sections.filter((sec) =>
-      sec.name.toLowerCase().includes(s) ||
-      sec.classroom.name.toLowerCase().includes(s) ||
-      sec.classroom.sede.name.toLowerCase().includes(s) ||
-      sec.turno.name.toLowerCase().includes(s)
-    );
-  }, [sections, search]);
+    let result = sections;
+
+    // Filtro por búsqueda
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      result = result.filter((sec) =>
+        sec.name.toLowerCase().includes(s) ||
+        sec.classroom.name.toLowerCase().includes(s) ||
+        sec.classroom.sede.name.toLowerCase().includes(s) ||
+        sec.turno.name.toLowerCase().includes(s)
+      );
+    }
+
+    // Filtro por estado
+    if (filterStatus === 'active') {
+      result = result.filter((s) => s.isActive);
+    } else if (filterStatus === 'inactive') {
+      result = result.filter((s) => !s.isActive);
+    }
+
+    // Filtro por turno
+    if (filterTurno) {
+      result = result.filter((s) => s.turnoId === filterTurno);
+    }
+
+    // Filtro por sede
+    if (filterSede) {
+      result = result.filter((s) => s.classroom.sedeId === filterSede);
+    }
+
+    return result;
+  }, [sections, search, filterStatus, filterTurno, filterSede]);
 
   // Paginación
   const paginatedSections = useMemo(() => {
@@ -68,7 +95,16 @@ export const SeccionesTab: React.FC = () => {
     return filteredSections.slice(start, start + pageSize);
   }, [filteredSections, currentPage, pageSize]);
 
-  useEffect(() => { setCurrentPage(1); }, [search, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, pageSize, filterStatus, filterTurno, filterSede]);
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterStatus('all');
+    setFilterTurno('');
+    setFilterSede('');
+  };
+
+  const hasActiveFilters = search || filterStatus !== 'all' || filterTurno || filterSede;
 
   // Exportar
   const handleExport = async () => {
@@ -293,7 +329,18 @@ export const SeccionesTab: React.FC = () => {
                 Secciones
               </h3>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', margin: '2px 0 0' }}>
-                {sections.filter((s) => s.isActive).length} activas de {sections.length}
+                {filterStatus === 'active' && (
+                  <>Mostrando {filteredSections.length} activas</>
+                )}
+                {filterStatus === 'inactive' && (
+                  <>Mostrando {filteredSections.length} inactivas</>
+                )}
+                {filterStatus === 'all' && (
+                  <>
+                    {filteredSections.filter((s) => s.isActive).length} activas de {filteredSections.length}
+                    {hasActiveFilters && ' (filtrado)'}
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -302,8 +349,9 @@ export const SeccionesTab: React.FC = () => {
           </Button>
         </div>
 
+        {/* Filtros */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ flex: 2, minWidth: 240 }}>
             <Input
               placeholder="Buscar por sección, salón, sede..."
               value={search}
@@ -311,6 +359,40 @@ export const SeccionesTab: React.FC = () => {
               icon={<MagnifyingGlassIcon />}
             />
           </div>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              options={[
+                { value: 'all', label: 'Todas' },
+                { value: 'active', label: 'Solo activas' },
+                { value: 'inactive', label: 'Solo inactivas' },
+              ]}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <Select
+              value={filterTurno}
+              onChange={(e) => setFilterTurno(e.target.value)}
+              options={[
+                { value: '', label: 'Todos los turnos' },
+                ...turnos.map((t) => ({ value: t.id, label: t.name })),
+              ]}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <Select
+              value={filterSede}
+              onChange={(e) => setFilterSede(e.target.value)}
+              options={[
+                { value: '', label: 'Todas las sedes' },
+                ...sedes.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <Button 
             variant="success" 
             onClick={handleExport}
@@ -318,13 +400,13 @@ export const SeccionesTab: React.FC = () => {
           >
             Exportar Excel
           </Button>
-          {search && (
+          {hasActiveFilters && (
             <Button 
               variant="ghost" 
-              onClick={() => setSearch('')}
+              onClick={clearFilters}
               icon={<XCircleIcon />}
             >
-              Limpiar
+              Limpiar filtros
             </Button>
           )}
         </div>
@@ -405,7 +487,7 @@ export const SeccionesTab: React.FC = () => {
                   <td colSpan={8} style={{ textAlign: 'center', padding: 48, color: 'var(--color-neutral-400)' }}>
                     <UserGroupIcon style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
                     <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-                      {search ? 'No se encontraron secciones' : 'Sin secciones registradas'}
+                      {hasActiveFilters ? 'No se encontraron secciones con estos filtros' : 'Sin secciones registradas'}
                     </div>
                   </td>
                 </tr>

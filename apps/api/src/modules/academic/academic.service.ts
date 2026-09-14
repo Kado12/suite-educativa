@@ -150,9 +150,23 @@ export class AcademicService {
     return this.prisma.section.update({ where: { id }, data: d });
   }
 
-  async listSections(onlyActive = false) {
+  async listSections(filters: { onlyActive?: boolean; sedeId?: string; turnoId?: string } = {}) {
+    const where: any = {};
+    
+    if (filters.onlyActive) {
+      where.isActive = true;
+    }
+    
+    if (filters.sedeId) {
+      where.classroom = { sedeId: filters.sedeId };
+    }
+    
+    if (filters.turnoId) {
+      where.turnoId = filters.turnoId;
+    }
+
     return this.prisma.section.findMany({
-      where: onlyActive ? { isActive: true } : {},
+      where,
       include: {
         classroom: { include: { sede: true } },
         turno: true,

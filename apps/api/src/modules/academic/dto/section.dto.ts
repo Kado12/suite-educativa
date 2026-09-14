@@ -60,13 +60,22 @@ export class UpdateSectionDto {
   enrollmentPriority?: number;
 }
 
-// Reutilizamos el mismo DTO ya que hacen lo mismo
 export class UpdateSectionFullDto extends UpdateSectionDto {}
 
 export class ListSectionsQueryDto {
-  @ApiProperty({ required: false, type: Boolean })
+  @ApiProperty({ required: false, type: Boolean, description: 'Filtrar solo activas' })
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
   onlyActive?: boolean;
+
+  @ApiProperty({ required: false, description: 'Filtrar por sede' })
+  @IsString()
+  @IsOptional()
+  sedeId?: string;
+
+  @ApiProperty({ required: false, description: 'Filtrar por turno' })
+  @IsString()
+  @IsOptional()
+  turnoId?: string;
 }
