@@ -63,7 +63,7 @@ export const MatriculasTab: React.FC = () => {
   const load = async () => {
     const [p, s, stu, pl, stats] = await Promise.all([
       academicService.listPeriods(),
-      academicService.listSections(true),
+      academicService.listSections({ onlyActive: true }),
       peopleService.listStudents(),
       academicService.listPaymentPlans(),
       enrollmentService.stats(activePeriod || undefined),

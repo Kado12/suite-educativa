@@ -53,7 +53,7 @@ export const EnrollmentWizard: React.FC<{ isOpen: boolean; onClose: () => void; 
 
   useEffect(() => {
     if (form.sedeId && form.turnoId) {
-      academicService.listSections(true).then((all: any[]) => {
+      academicService.listSections({ onlyActive: true }).then((all: any[]) => {
         setSections(all.filter((s) => s.classroom.sede.id === form.sedeId && s.turnoId === form.turnoId));
       });
     }

@@ -58,7 +58,7 @@ export const EditAcademicModal: React.FC<Props> = ({ isOpen, student, onClose, o
 
   useEffect(() => {
     if (sedeId && turnoId) {
-      academicService.listSections(true).then((all: any[]) => {
+      academicService.listSections({ onlyActive: true }).then((all: any[]) => {
         setSections(all.filter((s) => s.classroom.sede.id === sedeId && s.turnoId === turnoId));
       });
     }
