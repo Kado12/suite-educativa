@@ -3,7 +3,9 @@ import {
   PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, 
   DocumentArrowDownIcon, ArrowDownTrayIcon, IdentificationIcon,
   UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, MagnifyingGlassIcon,
-  CloudArrowUpIcon, EyeIcon
+  CloudArrowUpIcon, EyeIcon,
+  ExclamationTriangleIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { Card, Button, Input, Select, Modal, ConfirmModal, Badge, Pagination, SearchableSelect, FileInput } from '@suite/ui';
 import { useToast } from '../../../context/ToastContext';
@@ -32,6 +34,13 @@ export const StudentsTab: React.FC = () => {
   const [fTurno, setFTurno] = useState('');
 
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
+  const [bulkResult, setBulkResult] = useState<{
+    matched: number;
+    updated: number;
+    skipped: number;
+    errors: { filename: string; reason: string; detail?: string }[];
+  } | null>(null);
 
   // Modal eliminar
   const [del, setDel] = useState<any | null>(null);
@@ -101,14 +110,18 @@ export const StudentsTab: React.FC = () => {
     setUploadingPhotos(true);
     try {
       const r = await uploadService.bulkStudentPhotos(files);
-      success(`✅ ${r.matched} fotos asignadas`);
-      if (r.unmatched.length > 0) error(`⚠️ ${r.unmatched.length} sin coincidencia de DNI`);
+      // Mostrar modal en vez de toast genérico
+      setBulkResult(r);
+      // Solo toast rápido si todo salió bien
+      if (r.errors.length === 0 && r.skipped === 0) {
+        success(`✅ ${r.matched + r.updated} fotos procesadas`);
+      }
       load();
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error al subir fotos'); 
-    } finally { 
-      setUploadingPhotos(false); 
-      e.target.value = ''; 
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error al subir fotos');
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = '';
     }
   };
 
@@ -400,6 +413,280 @@ export const StudentsTab: React.FC = () => {
         onClose={() => setShowEditAcademic(false)}
         onSaved={handleSaved}
       />
+      <Modal
+        isOpen={!!bulkResult}
+        onClose={() => setBulkResult(null)}
+        title="Resultado de subida de fotos"
+        size="lg"
+      >
+        {bulkResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Resumen en cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              <div style={{
+                padding: 16,
+                background: 'var(--color-success-50)',
+                border: '1px solid var(--color-success-200)',
+                borderRadius: 10,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success-700)' }}>
+                  {bulkResult.matched}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success-600)', marginTop: 4 }}>
+                  Asignadas nuevas
+                </div>
+              </div>
+              {bulkResult.updated > 0 && (
+                <div style={{
+                  padding: 16,
+                  background: 'var(--color-primary-50)',
+                  border: '1px solid var(--color-primary-200)',
+                  borderRadius: 10,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-primary-700)' }}>
+                    {bulkResult.updated}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-600)', marginTop: 4 }}>
+                    Actualizadas
+                  </div>
+                </div>
+              )}
+              {bulkResult.skipped > 0 && (
+                <div style={{
+                  padding: 16,
+                  background: 'var(--color-neutral-50)',
+                  border: '1px solid var(--color-neutral-200)',
+                  borderRadius: 10,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-neutral-600)' }}>
+                    {bulkResult.skipped}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-neutral-500)', marginTop: 4 }}>
+                    Omitidas (duplicadas)
+                  </div>
+                </div>
+              )}
+              <div style={{
+                padding: 16,
+                background: 'var(--color-danger-50)',
+                border: '1px solid var(--color-danger-200)',
+                borderRadius: 10,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-danger-700)' }}>
+                  {bulkResult.errors.length}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger-600)', marginTop: 4 }}>
+                  Con errores
+                </div>
+              </div>
+            </div>
+
+            {/* Detalle de errores agrupados */}
+            {bulkResult.errors.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Grupo: Sin DNI en el nombre */}
+                {(() => {
+                  const group = bulkResult.errors.filter((e) => e.reason === 'no_dni');
+                  if (group.length === 0) return null;
+                  return (
+                    <div style={{
+                      border: '1px solid var(--color-warning-200)',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '10px 14px',
+                        background: 'var(--color-warning-50)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderBottom: '1px solid var(--color-warning-200)',
+                      }}>
+                        <ExclamationTriangleIcon style={{ width: 18, height: 18, color: 'var(--color-warning-600)' }} />
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-warning-800)' }}>
+                          Sin DNI en el nombre ({group.length})
+                        </span>
+                      </div>
+                      <div style={{ padding: '8px 14px', fontSize: 'var(--text-xs)', color: 'var(--color-neutral-600)', marginBottom: 8 }}>
+                        💡 Renombra los archivos usando el DNI del alumno. Ej: <code>12345678.jpg</code>
+                      </div>
+                      <div style={{ maxHeight: 140, overflowY: 'auto', padding: '0 14px 10px' }}>
+                        {group.map((e, i) => (
+                          <div key={i} style={{
+                            padding: '6px 10px',
+                            background: 'var(--color-neutral-50)',
+                            borderRadius: 4,
+                            marginBottom: 4,
+                            fontSize: 'var(--text-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--color-neutral-700)',
+                            wordBreak: 'break-all',
+                          }}>
+                            📄 {e.filename}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Grupo: DNI sin alumno en BD */}
+                {(() => {
+                  const group = bulkResult.errors.filter((e) => e.reason === 'student_not_found');
+                  if (group.length === 0) return null;
+                  return (
+                    <div style={{
+                      border: '1px solid var(--color-danger-200)',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '10px 14px',
+                        background: 'var(--color-danger-50)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderBottom: '1px solid var(--color-danger-200)',
+                      }}>
+                        <UserIcon style={{ width: 18, height: 18, color: 'var(--color-danger-600)' }} />
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-danger-800)' }}>
+                          DNI no registrado en el sistema ({group.length})
+                        </span>
+                      </div>
+                      <div style={{ padding: '8px 14px', fontSize: 'var(--text-xs)', color: 'var(--color-neutral-600)', marginBottom: 8 }}>
+                        💡 Registra primero a estos alumnos o verifica que el DNI del archivo sea correcto
+                      </div>
+                      <div style={{ maxHeight: 140, overflowY: 'auto', padding: '0 14px 10px' }}>
+                        {group.map((e, i) => (
+                          <div key={i} style={{
+                            padding: '6px 10px',
+                            background: 'var(--color-neutral-50)',
+                            borderRadius: 4,
+                            marginBottom: 4,
+                            fontSize: 'var(--text-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--color-neutral-700)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}>
+                            <span>📄 {e.filename}</span>
+                            <Badge color="neutral">{e.detail}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Grupo: DNI duplicados */}
+                {(() => {
+                  const group = bulkResult.errors.filter((e) => e.reason === 'duplicate_dni');
+                  if (group.length === 0) return null;
+                  return (
+                    <div style={{
+                      border: '1px solid var(--color-neutral-200)',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '10px 14px',
+                        background: 'var(--color-neutral-100)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderBottom: '1px solid var(--color-neutral-200)',
+                      }}>
+                        <ExclamationCircleIcon style={{ width: 18, height: 18, color: 'var(--color-neutral-600)' }} />
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-neutral-800)' }}>
+                          DNI duplicado en varios archivos ({group.length})
+                        </span>
+                      </div>
+                      <div style={{ padding: '8px 14px', fontSize: 'var(--text-xs)', color: 'var(--color-neutral-600)', marginBottom: 8 }}>
+                        💡 Solo se procesó la primera foto de cada DNI. Revisa los duplicados.
+                      </div>
+                      <div style={{ maxHeight: 140, overflowY: 'auto', padding: '0 14px 10px' }}>
+                        {group.map((e, i) => (
+                          <div key={i} style={{
+                            padding: '6px 10px',
+                            background: 'var(--color-neutral-50)',
+                            borderRadius: 4,
+                            marginBottom: 4,
+                            fontSize: 'var(--text-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--color-neutral-700)',
+                          }}>
+                            📄 {e.filename} <span style={{ color: 'var(--color-neutral-400)' }}>· {e.detail}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Grupo: Otros errores (no imagen, muy grande, cloudinary) */}
+                {(() => {
+                  const group = bulkResult.errors.filter((e) =>
+                    ['not_image', 'too_large'].includes(e.reason)
+                  );
+                  if (group.length === 0) return null;
+                  return (
+                    <div style={{
+                      border: '1px solid var(--color-danger-200)',
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '10px 14px',
+                        background: 'var(--color-danger-50)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderBottom: '1px solid var(--color-danger-200)',
+                      }}>
+                        <ExclamationTriangleIcon style={{ width: 18, height: 18, color: 'var(--color-danger-600)' }} />
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-danger-800)' }}>
+                          Problemas técnicos ({group.length})
+                        </span>
+                      </div>
+                      <div style={{ maxHeight: 140, overflowY: 'auto', padding: '0 14px 10px' }}>
+                        {group.map((e, i) => (
+                          <div key={i} style={{
+                            padding: '6px 10px',
+                            background: 'var(--color-neutral-50)',
+                            borderRadius: 4,
+                            marginBottom: 4,
+                            fontSize: 'var(--text-sm)',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--color-neutral-700)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}>
+                            <span>📄 {e.filename}</span>
+                            <Badge color="neutral">{e.detail}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Footer con botón de cerrar */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 8, borderTop: '1px solid var(--color-neutral-200)' }}>
+              <Button variant="secondary" onClick={() => setBulkResult(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

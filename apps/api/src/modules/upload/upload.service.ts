@@ -5,6 +5,17 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { STORAGE_FOLDER } from '../../config/storage';
 import * as path from 'path';
 
+export interface BulkPhotoResult {
+  matched: number;
+  updated: number;
+  skipped: number;
+  errors: {
+    filename: string;
+    reason: 'no_dni' | 'student_not_found' | 'duplicate_dni' | 'not_image' | 'too_large';
+    detail?: string;
+  }[];
+}
+
 @Injectable()
 export class UploadService {
   constructor(private config: ConfigService, private prisma: PrismaService) {
@@ -69,18 +80,93 @@ export class UploadService {
     return this.uploadImage(buffer, mimetype, newPublicId);
   }
 
-  async bulkStudentPhotos(files: any[]): Promise<{ matched: number; unmatched: string[] }> {
-    let matched = 0;
-    const unmatched: string[] = [];
+  async bulkStudentPhotos(files: any[]): Promise<BulkPhotoResult> {
+    const result: BulkPhotoResult = {
+      matched: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [],
+    };
+
+    // 1. Pre-procesar todos los archivos: extraer DNI y detectar duplicados
+    const dniCounter = new Map<string, number>();
+    const fileMap: { file: any; dni: string | null }[] = [];
+
     for (const file of files) {
+      // Validar que sea imagen
+      if (!file.mimetype?.startsWith('image/')) {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'not_image',
+          detail: `Tipo ${file.mimetype} no soportado`,
+        });
+        continue;
+      }
+      // Validar tamaño
+      if (file.size > 5 * 1024 * 1024) {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'too_large',
+          detail: `${(file.size / 1024 / 1024).toFixed(1)}MB (máx 5MB)`,
+        });
+        continue;
+      }
+      // Extraer DNI del nombre del archivo
       const dni = path.parse(file.originalname).name.replace(/\D/g, '');
-      if (!dni) { unmatched.push(file.originalname); continue; }
-      const person = await this.prisma.person.findUnique({ where: { dni } });
-      if (!person) { unmatched.push(file.originalname); continue; }
-      const url = await this.uploadImage(file.buffer, file.mimetype, dni);
-      await this.prisma.person.update({ where: { id: person.id }, data: { photoUrl: url } });
-      matched++;
+      if (!dni || dni.length < 7) {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'no_dni',
+          detail: 'El nombre no contiene un DNI válido (mínimo 7 dígitos)',
+        });
+        continue;
+      }
+      // Normalizar a 8 dígitos
+      const normalizedDni = dni.length === 7 ? '0' + dni : dni;
+      dniCounter.set(normalizedDni, (dniCounter.get(normalizedDni) || 0) + 1);
+      fileMap.push({ file, dni: normalizedDni });
     }
-    return { matched, unmatched };
+
+    // 2. Procesar los archivos válidos
+    for (const { file, dni } of fileMap) {
+      // Detectar duplicados
+      if (dni && (dniCounter.get(dni) || 0) > 1) {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'duplicate_dni',
+          detail: `DNI ${dni} aparece en varios archivos`,
+        });
+        result.skipped++;
+        continue;
+      }
+
+      // Buscar alumno
+      const person = await this.prisma.person.findUnique({ where: { dni: dni! } });
+      if (!person) {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'student_not_found',
+          detail: `No existe alumno con DNI ${dni}`,
+        });
+        continue;
+      }
+
+      // Subir y actualizar
+      try {
+        const url = await this.uploadImage(file.buffer, file.mimetype, dni);
+        const hadPhoto = !!person.photoUrl;
+        await this.prisma.person.update({ where: { id: person.id }, data: { photoUrl: url } });
+        if (hadPhoto) result.updated++;
+        else result.matched++;
+      } catch {
+        result.errors.push({
+          filename: file.originalname,
+          reason: 'not_image',
+          detail: 'Error al subir a Cloudinary',
+        });
+      }
+    }
+
+    return result;
   }
 }
