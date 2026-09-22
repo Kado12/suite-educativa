@@ -329,7 +329,7 @@ export class EnrollmentService {
         student: true,
         section: { include: { classroom: { include: { sede: true } }, turno: true } },
         period: true,
-        payments: { orderBy: { installment: 'asc' } },
+        payments: { orderBy: { installment: 'asc' }, include:{ paymentPlan: true } },
       },
       orderBy: { enrolledAt: 'desc' },
     });
