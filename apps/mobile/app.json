@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Suite Educativa",
+    "slug": "suite-educativa-mobile",
+    "version": "1.0.0",
+    "scheme": "suiteeducativa",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#094C76"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "edu.suite.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#094C76"
+      },
+      "package": "edu.suite.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

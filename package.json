@@ -22,7 +22,9 @@
     "db:seed:full": "pnpm --filter @suite/database run seed:full",
     "db:seed:academic": "pnpm --filter @suite/database run seed:academic",
     "db:seed:teachers": "pnpm --filter @suite/database run seed:teachers",
-    "db:seed:students": "pnpm --filter @suite/database run seed:students"
+    "db:seed:students": "pnpm --filter @suite/database run seed:students",
+    "mobile:dev": "pnpm --filter mobile start",
+    "mobile:android": "pnpm --filter mobile android"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
