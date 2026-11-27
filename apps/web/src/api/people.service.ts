@@ -16,6 +16,42 @@ export const peopleService = {
     link.href = url; link.download = 'alumnos.xlsx'; link.click();
     window.URL.revokeObjectURL(url);
   },
+  exportAllPhotos: async () => {
+    try {
+      const res = await api.get('/api/people/students/export-photos', {
+        responseType: 'blob',
+        timeout: 0, // sin límite: con miles de fotos puede tardar más de 2 min
+      });
+
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'fotos-alumnos.zip';
+      document.body.appendChild(link); // necesario en algunos navegadores (Firefox)
+      link.click();
+      document.body.removeChild(link);
+
+      // Pequeño delay para asegurar que el navegador inició la descarga
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (err: any) {
+      // Con responseType 'blob', el error del backend también llega como Blob
+      let message = 'Error al descargar fotos';
+      const data = err?.response?.data;
+
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          message = parsed.message || message;
+        } catch {
+          // no era JSON, dejamos el mensaje por defecto
+        }
+      } else if (data?.message) {
+        message = data.message;
+      }
+
+      throw new Error(message);
+    }
+  },
 
   // Docentes
   listTeachers: (search?: string) => api.get('/api/people/teachers', { params: { search } }).then((r) => r.data),

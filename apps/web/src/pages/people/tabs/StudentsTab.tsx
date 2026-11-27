@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon, 
+import {
+  PencilIcon, TrashIcon, AcademicCapIcon, PhotoIcon,
   DocumentArrowDownIcon, ArrowDownTrayIcon, IdentificationIcon,
   UserIcon, PhoneIcon, EnvelopeIcon, MapPinIcon, MagnifyingGlassIcon,
   CloudArrowUpIcon, EyeIcon,
@@ -30,10 +30,12 @@ export const StudentsTab: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
   const [sedes, setSedes] = useState<any[]>([]);
   const [turnos, setTurnos] = useState<any[]>([]);
-  const [fSede, setFSede] = useState(''); 
+  const [fSede, setFSede] = useState('');
   const [fTurno, setFTurno] = useState('');
 
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
+  const [downloadingPhotos, setDownloadingPhotos] = useState(false);
 
   const [bulkResult, setBulkResult] = useState<{
     matched: number;
@@ -81,26 +83,26 @@ export const StudentsTab: React.FC = () => {
   const openEditAcademic = (s: any) => { setSelectedStudent(s); setShowEditAcademic(true); };
 
   const handleDelete = async () => {
-    if (!del) return; 
+    if (!del) return;
     setSaving(true);
-    try { 
-      await peopleService.deleteStudent(del.id); 
-      success('✅ Alumno eliminado'); 
-      setDel(null); 
-      load(); 
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error'); 
-    } finally { 
-      setSaving(false); 
+    try {
+      await peopleService.deleteStudent(del.id);
+      success('✅ Alumno eliminado');
+      setDel(null);
+      load();
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleExport = async () => {
-    try { 
-      await peopleService.exportStudents(search || undefined); 
-      success('📥 Lista de alumnos descargada'); 
-    } catch (err: any) { 
-      error(err.response?.data?.message || 'Error al exportar'); 
+    try {
+      await peopleService.exportStudents(search || undefined);
+      success('📥 Lista de alumnos descargada');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Error al exportar');
     }
   };
 
@@ -122,6 +124,18 @@ export const StudentsTab: React.FC = () => {
     } finally {
       setUploadingPhotos(false);
       e.target.value = '';
+    }
+  };
+
+  const handleDownloadAllPhotos = async () => {
+    setDownloadingPhotos(true);
+    try {
+      await peopleService.exportAllPhotos();
+      success('📥 Fotos descargadas correctamente');
+    } catch (err: any) {
+      error(err.message || 'Error al descargar fotos');
+    } finally {
+      setDownloadingPhotos(false);
     }
   };
 
@@ -153,16 +167,16 @@ export const StudentsTab: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             onClick={handleExport}
             icon={<ArrowDownTrayIcon />}
           >
             Exportar lista
           </Button>
-          <label 
-            className="btn btn-secondary" 
-            style={{ 
+          <label
+            className="btn btn-secondary"
+            style={{
               cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -172,18 +186,27 @@ export const StudentsTab: React.FC = () => {
           >
             <CloudArrowUpIcon style={{ width: 18, height: 18 }} />
             {uploadingPhotos ? 'Subiendo fotos...' : 'Subir fotos en bloque'}
-            <input 
-              type="file" 
-              accept="image/*" 
-              multiple 
-              onChange={handleBulkPhotos} 
-              style={{ display: 'none' }} 
-              disabled={uploadingPhotos} 
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleBulkPhotos}
+              style={{ display: 'none' }}
+              disabled={uploadingPhotos}
             />
           </label>
+          <Button
+            variant="primary"
+            onClick={handleDownloadAllPhotos}
+            isLoading={downloadingPhotos}
+            loadingText="Generando ZIP..."
+            icon={<ArrowDownTrayIcon />}
+          >
+            Descargar todas las fotos
+          </Button>
           {(fSede || fTurno || search) && (
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => { setFSede(''); setFTurno(''); setSearch(''); }}
             >
               Limpiar filtros
@@ -192,10 +215,10 @@ export const StudentsTab: React.FC = () => {
         </div>
 
         {/* Stats rápidos */}
-        <div style={{ 
-          marginTop: 16, 
-          padding: '12px 16px', 
-          background: 'var(--color-neutral-50)', 
+        <div style={{
+          marginTop: 16,
+          padding: '12px 16px',
+          background: 'var(--color-neutral-50)',
           borderRadius: 8,
           display: 'flex',
           gap: 24,
@@ -231,11 +254,11 @@ export const StudentsTab: React.FC = () => {
                 return (
                   <tr key={s.id}>
                     <td>
-                      <div style={{ 
-                        width: 60, 
-                        height: 60, 
-                        borderRadius: 8, 
-                        overflow: 'hidden', 
+                      <div style={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 8,
+                        overflow: 'hidden',
                         background: 'var(--color-neutral-100)',
                         border: '2px solid var(--color-neutral-200)'
                       }}>
@@ -246,11 +269,11 @@ export const StudentsTab: React.FC = () => {
                             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
                           />
                         ) : (
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            width: '100%', 
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
                             height: '100%',
                             background: 'linear-gradient(135deg, var(--color-primary-100) 0%, var(--color-primary-200) 100%)',
                           }}>
@@ -305,17 +328,17 @@ export const StudentsTab: React.FC = () => {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button 
-                          onClick={() => openEditPersonal(s)} 
-                          className="btn btn-ghost btn-icon" 
+                        <button
+                          onClick={() => openEditPersonal(s)}
+                          className="btn btn-ghost btn-icon"
                           title="Editar datos personales"
                           style={{ color: 'var(--color-success-500)' }}
                         >
                           <PencilIcon style={{ width: 16, height: 16 }} />
                         </button>
-                        <button 
-                          onClick={() => openEditAcademic(s)} 
-                          className="btn btn-ghost btn-icon" 
+                        <button
+                          onClick={() => openEditAcademic(s)}
+                          className="btn btn-ghost btn-icon"
                           title="Editar datos académicos"
                           style={{ color: 'var(--color-primary-600)' }}
                         >
@@ -323,11 +346,11 @@ export const StudentsTab: React.FC = () => {
                         </button>
                         <button
                           onClick={async () => {
-                            try { 
-                              await pdfService.downloadStudentRecord(s.id, s.dni); 
-                              success('✅ Ficha PDF descargada'); 
-                            } catch { 
-                              error('Error al generar PDF'); 
+                            try {
+                              await pdfService.downloadStudentRecord(s.id, s.dni);
+                              success('✅ Ficha PDF descargada');
+                            } catch {
+                              error('Error al generar PDF');
                             }
                           }}
                           className="btn btn-ghost btn-icon"
@@ -336,24 +359,24 @@ export const StudentsTab: React.FC = () => {
                         >
                           <DocumentArrowDownIcon style={{ width: 16, height: 16 }} />
                         </button>
-                        <button 
-                          onClick={async () => { 
-                            try { 
-                              await pdfService.downloadStudentCard(s.id, s.dni); 
-                              success('✅ Carné descargado'); 
-                            } catch { 
-                              error('Error al generar carné'); 
-                            } 
+                        <button
+                          onClick={async () => {
+                            try {
+                              await pdfService.downloadStudentCard(s.id, s.dni);
+                              success('✅ Carné descargado');
+                            } catch {
+                              error('Error al generar carné');
+                            }
                           }}
-                          className="btn btn-ghost btn-icon" 
+                          className="btn btn-ghost btn-icon"
                           title="Carné estudiantil"
                           style={{ color: 'var(--color-primary-600)' }}
                         >
                           <IdentificationIcon style={{ width: 16, height: 16 }} />
                         </button>
-                        <button 
-                          onClick={() => setDel(s)} 
-                          className="btn btn-ghost btn-icon" 
+                        <button
+                          onClick={() => setDel(s)}
+                          className="btn btn-ghost btn-icon"
                           title="Eliminar"
                           style={{ color: 'var(--color-danger-600)' }}
                         >
@@ -382,23 +405,23 @@ export const StudentsTab: React.FC = () => {
         </div>
 
         {filtered.length > 0 && (
-          <Pagination 
-            currentPage={currentPage} 
-            pageSize={pageSize} 
-            totalItems={filtered.length} 
-            onPageChange={setCurrentPage} 
-            onPageSizeChange={setPageSize} 
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
           />
         )}
       </Card>
 
-      <ConfirmModal 
-        isOpen={!!del} 
-        onClose={() => setDel(null)} 
-        onConfirm={handleDelete} 
+      <ConfirmModal
+        isOpen={!!del}
+        onClose={() => setDel(null)}
+        onConfirm={handleDelete}
         title="Eliminar alumno"
-        message={`¿Eliminar a ${del?.firstName} ${del?.lastName}?\n\nSolo es posible si no tiene matrículas activas.`} 
-        isLoading={saving} 
+        message={`¿Eliminar a ${del?.firstName} ${del?.lastName}?\n\nSolo es posible si no tiene matrículas activas.`}
+        isLoading={saving}
       />
 
       <EditPersonalModal

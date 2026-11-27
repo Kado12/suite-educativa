@@ -33,7 +33,7 @@ import {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('people')
 export class PeopleController {
-  constructor(private svc: PeopleService) {}
+  constructor(private svc: PeopleService) { }
 
   // ===== ALUMNOS =====
   @Post('students')
@@ -91,6 +91,11 @@ export class PeopleController {
   @Auditable('DELETE', 'Estudiante')
   deleteStudent(@Param('id') id: string) {
     return this.svc.deletePerson(id);
+  }
+
+  @Get('students/export-photos')
+  async exportPhotos(@Res() res: Response) {
+    await this.svc.exportAllPhotos(res);
   }
 
   // ===== DOCENTES =====

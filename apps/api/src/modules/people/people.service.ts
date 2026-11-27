@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UploadService } from '../upload/upload.service';
 import * as ExcelJS from 'exceljs';
+import axios from 'axios';
 import { CreateStudentDto, UpdateStudentDto, UpdateStudentFullDto } from './dto/student.dto';
 import { CreateTeacherDto, UpdateTeacherFullDto, UpdateTeacherProfileDto } from './dto/teacher.dto';
+import { ZipArchive } from 'archiver';
+import { Response } from 'express';
 
 @Injectable()
 export class PeopleService {
-  constructor(private prisma: PrismaService, private uploadService: UploadService) {}
+  constructor(private prisma: PrismaService, private uploadService: UploadService) { }
+  private readonly logger = new Logger(PeopleService.name);
 
   private validateDocument(docType: string, dni: string) {
     if (docType === 'DNI') {
@@ -171,6 +175,101 @@ export class PeopleService {
       ]);
     }
     return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
+  async exportAllPhotos(res: Response): Promise<void> {
+    // 1. Obtener alumnos con foto
+    const students = await this.prisma.person.findMany({
+      where: {
+        teacherProfile: null,
+        photoUrl: { not: null },
+        dni: { not: null },
+      },
+      select: { dni: true, photoUrl: true },
+    });
+
+    // Se lanza ANTES de enviar headers para que Nest responda un 404 normal
+    if (students.length === 0) {
+      throw new NotFoundException('No hay fotos de alumnos para exportar');
+    }
+
+    const BATCH_SIZE = 500; // fotos por carpeta "parte-N"
+    const CONCURRENCY = 10; // descargas simultáneas
+
+    // 2. Headers de la respuesta
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="fotos-alumnos.zip"',
+    });
+
+    // 3. Crear el ZIP y conectarlo a la respuesta
+    // Las fotos JPG ya están comprimidas, level 0 solo empaqueta y ahorra CPU
+    const archive = new ZipArchive({ zlib: { level: 0 } });
+
+    archive.on('warning', (err) => this.logger.warn(err.message));
+    archive.on('error', (err) => {
+      this.logger.error(`Error generando ZIP: ${err.message}`);
+      res.destroy(err);
+    });
+
+    // Si el cliente cancela la descarga, detenemos todo
+    let aborted = false;
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        aborted = true;
+        archive.abort();
+      }
+    });
+
+    archive.pipe(res);
+
+    // 4. Descargar y agregar fotos
+    const failed: string[] = [];
+    const useFolders = students.length > BATCH_SIZE;
+
+    for (let i = 0; i < students.length; i += CONCURRENCY) {
+      if (aborted) return;
+
+      const group = students.slice(i, i + CONCURRENCY);
+
+      const downloads = await Promise.all(
+        group.map(async (s) => {
+          try {
+            const { data } = await axios.get<ArrayBuffer>(s.photoUrl!, {
+              responseType: 'arraybuffer',
+              timeout: 15000,
+            });
+            return { dni: s.dni!, buffer: Buffer.from(data), ok: true as const };
+          } catch (err) {
+            this.logger.warn(`Falló la foto del DNI ${s.dni}: ${(err as Error).message}`);
+            return { dni: s.dni!, ok: false as const };
+          }
+        }),
+      );
+
+      downloads.forEach((d, idx) => {
+        if (!d.ok) {
+          failed.push(d.dni);
+          return;
+        }
+        const globalIndex = i + idx;
+        const folder = useFolders
+          ? `parte-${Math.floor(globalIndex / BATCH_SIZE) + 1}/`
+          : '';
+        archive.append(d.buffer, { name: `${folder}${d.dni}.jpg` });
+      });
+    }
+
+    // 5. Si hubo fallos, incluir un reporte dentro del ZIP
+    if (failed.length > 0) {
+      const report =
+        `Fotos que no se pudieron descargar (${failed.length}):\n` +
+        failed.join('\n');
+      archive.append(report, { name: 'errores.txt' });
+    }
+
+    // 6. Finalizar (cierra el stream hacia la respuesta)
+    await archive.finalize();
   }
 
   // ===== DOCENTES =====
