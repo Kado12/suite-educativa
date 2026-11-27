@@ -149,11 +149,11 @@ export class PeopleService {
     ws.addRow([`Total: ${students.length}`]);
     ws.addRow([]);
 
-    const headers = ['Apellidos', 'Nombres', 'Tipo doc.', 'Documento', 'Celular', 'Correo', 'Fecha nac.', 'Género', 'Sección actual', 'Sede', 'Turno'];
+    const headers = ['Apellidos', 'Nombres', 'Tipo doc.', 'Documento', 'Celular', 'Correo', 'Fecha nac.', 'Género', 'Sección actual', 'Sede', 'Turno', 'Contiene Foto?', 'Foto URL'];
     const hr = ws.addRow(headers);
     hr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     hr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7DC2' } };
-    [18, 18, 10, 12, 12, 26, 12, 8, 12, 14, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    [18, 18, 10, 12, 12, 26, 12, 8, 12, 14, 10, 12, 20].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const g: Record<string, string> = { M: 'Masculino', F: 'Femenino', O: 'Otro' };
     for (const s of students) {
@@ -166,6 +166,8 @@ export class PeopleService {
         enr?.section?.name || 'Sin matrícula',
         enr?.section?.classroom?.sede?.name || '',
         enr?.section?.turno?.name || '',
+        s.photoUrl ? 'Sí' : 'No',
+        s.photoUrl || '',
       ]);
     }
     return Buffer.from(await wb.xlsx.writeBuffer());
